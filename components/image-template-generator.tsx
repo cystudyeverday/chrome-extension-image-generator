@@ -151,7 +151,10 @@ export function ImageTemplateGenerator() {
   const [isDragging, setIsDragging] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [hasEnteredEditor, setHasEnteredEditor] = useState(false);
   const fieldInputRefs = useRef<Partial<Record<EditableField, HTMLInputElement | null>>>({});
+  const editSectionRef = useRef<HTMLElement | null>(null);
+  const focusEditAfterImageLoadRef = useRef(false);
 
   const selectedTemplate = useMemo(() => templates.find((template) => template.id === templateId) ?? defaultTemplate, [templateId]);
   const selectedSizes = useMemo(
@@ -171,6 +174,21 @@ export function ImageTemplateGenerator() {
   useEffect(() => {
     setHistory(loadHistory());
   }, []);
+
+  useEffect(() => {
+    if (!image || !focusEditAfterImageLoadRef.current) {
+      return;
+    }
+
+    focusEditAfterImageLoadRef.current = false;
+    requestAnimationFrame(() => {
+      editSectionRef.current?.scrollIntoView({ block: "start" });
+      const firstField = selectedTemplate.fields[0];
+      if (firstField) {
+        fieldInputRefs.current[firstField]?.focus();
+      }
+    });
+  }, [image, selectedTemplate.fields]);
 
   useEffect(() => {
     if (!selectedTemplate.sizes.some((size) => selectedSizeIds.includes(size.id))) {
@@ -196,6 +214,8 @@ export function ImageTemplateGenerator() {
       const loadedImage = await createImageFromDataUrl(dataUrl);
       setImageDataUrl(dataUrl);
       setImage(loadedImage);
+      setHasEnteredEditor(true);
+      focusEditAfterImageLoadRef.current = true;
       setMessage("Image loaded locally. Nothing was uploaded to a server.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to load the image.");
@@ -318,6 +338,8 @@ export function ImageTemplateGenerator() {
         const restoredImage = await createImageFromDataUrl(item.imageDataUrl);
         setImageDataUrl(item.imageDataUrl);
         setImage(restoredImage);
+        setHasEnteredEditor(true);
+        focusEditAfterImageLoadRef.current = true;
         setMessage("History item restored.");
         setIsHistoryOpen(false);
       } catch {
@@ -329,20 +351,123 @@ export function ImageTemplateGenerator() {
     }
   }
 
+  if (!hasEnteredEditor || !image) {
+    return (
+      <main className="shell upload-shell">
+        <div className="upload-shell__background-mockup" aria-hidden="true">
+          <span className="upload-shell__background-bar" />
+          <span className="upload-shell__background-image" />
+          <span className="upload-shell__background-copy" />
+        </div>
+        <section className="upload-landing panel">
+          <div className="upload-landing__copy">
+            <p className="eyebrow">StoreShot</p>
+            <h1>Turn one screenshot into Chrome Store images.</h1>
+            <p className="upload-landing__lede">Upload a PNG, JPG, or WebP screenshot. Everything runs locally in your browser.</p>
+            <div className="upload-landing__outputs" aria-label="Generated Chrome Store outputs">
+              <span>Generates</span>
+              <ul>
+                {defaultTemplate.sizes.map((size) => (
+                  <li key={size.id}>
+                    <strong>{size.width}x{size.height}</strong>
+                    <span>{size.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <div className="upload-landing__stage">
+            <div className="upload-landing__action">
+              <label
+                className={`upload-box upload-box--landing ${isDragging ? "upload-box--active" : ""}`}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  setIsDragging(false);
+                  const file = event.dataTransfer.files[0];
+                  if (file) {
+                    void handleFile(file);
+                  }
+                }}
+              >
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) {
+                      void handleFile(file);
+                    }
+                  }}
+                />
+                <div>
+                  <span className="upload-box__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path d="M12 16V8m0 0-3.2 3.2M12 8l3.2 3.2" />
+                      <path d="M8.5 18.5H7.8a5.3 5.3 0 0 1-.7-10.55 6 6 0 0 1 11.08 2.72A3.95 3.95 0 0 1 17 18.5h-1.5" />
+                    </svg>
+                  </span>
+                  <strong>Drop your screenshot here</strong>
+                  <span>Or choose a PNG, JPG, or WebP from your computer.</span>
+                </div>
+              </label>
+              <div className="upload-landing__footer">
+                <label className="button button--secondary file-button upload-landing__generate">
+                  Choose screenshot
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) {
+                        void handleFile(file);
+                      }
+                    }}
+                  />
+                </label>
+                <p className="upload-landing__privacy">Local browser processing.</p>
+              </div>
+            </div>
+            {message ? <p className="notice">{message}</p> : null}
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="shell">
       <section className="hero">
         <div>
-          <p className="eyebrow">TemplatePic MVP</p>
+          <p className="eyebrow">StoreShot MVP</p>
           <h1>Chrome Store Image Template Generator</h1>
           <p>
             Create Chrome Web Store assets from one extension screenshot. Pick a promotional template, edit the copy, and export
             1280x800, 1400x560, and 440x280 PNGs. Everything runs locally in your browser.
           </p>
         </div>
-        <button type="button" className="button button--primary" disabled={!image || isDownloading} onClick={handleDownloadAll}>
-          {isDownloading ? "Generating..." : `Download Selected Previews (${selectedSizes.length})`}
-        </button>
+        <div className="hero__actions">
+          <label className="button button--secondary file-button">
+            Change Image
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) {
+                  void handleFile(file);
+                }
+              }}
+            />
+          </label>
+          <button type="button" className="button button--primary" disabled={isDownloading} onClick={handleDownloadAll}>
+            {isDownloading ? "Generating..." : `Download Selected Previews (${selectedSizes.length})`}
+          </button>
+        </div>
       </section>
 
       <div className="workspace">
@@ -350,52 +475,6 @@ export function ImageTemplateGenerator() {
           <section>
             <div className="section-title">
               <span>1</span>
-              <h2>Upload Image</h2>
-            </div>
-            <label
-              className={`upload-box ${isDragging ? "upload-box--active" : ""}`}
-              onDragOver={(event) => {
-                event.preventDefault();
-                setIsDragging(true);
-              }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={(event) => {
-                event.preventDefault();
-                setIsDragging(false);
-                const file = event.dataTransfer.files[0];
-                if (file) {
-                  void handleFile(file);
-                }
-              }}
-            >
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (file) {
-                    void handleFile(file);
-                  }
-                }}
-              />
-              {imageDataUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={imageDataUrl} alt="Uploaded image preview" />
-              ) : (
-                <div>
-                  <strong>Click or drag to upload</strong>
-                  <span>PNG / JPG / WebP, up to 10 MB</span>
-                </div>
-              )}
-            </label>
-            {imageDimensionsLabel ? (
-              <p className="upload-meta">Source image: {imageDimensionsLabel}. Template masks auto-adapt to this aspect ratio.</p>
-            ) : null}
-          </section>
-
-          <section>
-            <div className="section-title">
-              <span>2</span>
               <h2>Choose Template</h2>
             </div>
             <div className="template-list">
@@ -415,9 +494,9 @@ export function ImageTemplateGenerator() {
             </div>
           </section>
 
-          <section>
+          <section ref={editSectionRef}>
             <div className="section-title">
-              <span>3</span>
+              <span>2</span>
               <h2>Edit Copy</h2>
             </div>
             <div className="field-grid">
@@ -466,6 +545,9 @@ export function ImageTemplateGenerator() {
                 </select>
               </label>
             </div>
+            {imageDimensionsLabel ? (
+              <p className="upload-meta">Source image: {imageDimensionsLabel}. Template masks auto-adapt to this aspect ratio.</p>
+            ) : null}
           </section>
 
           {message ? <p className="notice">{message}</p> : null}
@@ -477,32 +559,25 @@ export function ImageTemplateGenerator() {
               <p className="eyebrow">Live Preview</p>
               <h2>Multi-size Preview</h2>
             </div>
-            <button type="button" className="button button--secondary" disabled={!image} onClick={persistHistory}>
+            <button type="button" className="button button--secondary" onClick={persistHistory}>
               Save to History
             </button>
           </div>
 
-          {!image ? (
-            <div className="empty-state">
-              <strong>Upload an image first</strong>
-              <span>Previews will render automatically. Select sizes directly from the preview cards.</span>
-            </div>
-          ) : (
-            <div className="preview-grid">
-              {selectedTemplate.sizes.map((size) => (
-                <PreviewCard
-                  key={size.id}
-                  template={selectedTemplate}
-                  image={image}
-                  data={data}
-                  size={size}
-                  isSelected={selectedSizeIds.includes(size.id)}
-                  onToggle={toggleSize}
-                  onDownload={(nextSize) => void handleDownloadSize(nextSize)}
-                />
-              ))}
-            </div>
-          )}
+          <div className="preview-grid">
+            {selectedTemplate.sizes.map((size) => (
+              <PreviewCard
+                key={size.id}
+                template={selectedTemplate}
+                image={image}
+                data={data}
+                size={size}
+                isSelected={selectedSizeIds.includes(size.id)}
+                onToggle={toggleSize}
+                onDownload={(nextSize) => void handleDownloadSize(nextSize)}
+              />
+            ))}
+          </div>
         </section>
 
       </div>
@@ -512,7 +587,7 @@ export function ImageTemplateGenerator() {
           <aside className="panel history-popover">
             <div className="history-popover__header">
               <div className="section-title">
-                <span>4</span>
+                <span>3</span>
                 <h2>Recent History</h2>
               </div>
               <button type="button" className="button button--ghost" onClick={() => setIsHistoryOpen(false)}>

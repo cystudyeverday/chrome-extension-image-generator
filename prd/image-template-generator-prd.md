@@ -10,7 +10,7 @@ Existing Chrome Extension, local SVG/Canvas generation, and Chrome Web Store ass
 
 ## 2. Product Positioning
 
-Working names: TemplatePic, QuickPromo, or ImageForge Extension.
+Chosen name: StoreShot.
 
 One-line positioning:
 

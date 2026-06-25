@@ -1,4 +1,11 @@
-import { drawFittedSingleLineText, drawImageInBox, drawWrappedText, fillRoundedRect, setFont, shade } from "@/lib/canvas-utils";
+import {
+  drawFittedSingleLineText,
+  drawFittedTextBlock,
+  drawImageInBox,
+  fillRoundedRect,
+  setFont,
+  shade
+} from "@/lib/canvas-utils";
 import type { ExportSize, Template, TemplateRenderArgs } from "@/lib/types";
 
 export const exportSizes: ExportSize[] = [
@@ -41,6 +48,16 @@ function getImageRatio(image: HTMLImageElement) {
   }
 
   return width / height;
+}
+
+function getTemplateSpacing(width: number, height: number) {
+  const shortSide = Math.min(width, height);
+
+  return {
+    textInset: clamp(shortSide * 0.052, 14, 40),
+    gutter: clamp(width * 0.04, 18, 64),
+    stackGap: clamp(height * 0.034, 10, 26)
+  };
 }
 
 function getAdaptiveCardBounds(image: HTMLImageElement, x: number, y: number, width: number, height: number) {
@@ -109,7 +126,7 @@ function drawBadge(ctx: CanvasRenderingContext2D, text: string, x: number, y: nu
   ctx.fillStyle = color;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  drawFittedSingleLineText(ctx, label, x + width / 2, y + height / 2, width - horizontalPadding * 1.45, 800, fontSize, minFontSize);
+  drawFittedSingleLineText(ctx, label, x + width / 2, y + height / 2, width - horizontalPadding * 2, 800, fontSize, minFontSize);
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
 }
@@ -127,20 +144,34 @@ function textWithDefault(value: string | undefined, fallback: string) {
   return value ?? fallback;
 }
 
-function drawOptionalWrappedText(
+function drawOptionalFittedTextBlock(
   ctx: CanvasRenderingContext2D,
   text: string,
   x: number,
   y: number,
-  maxWidth: number,
-  lineHeight: number,
-  maxLines: number
+  width: number,
+  height: number,
+  weight: number,
+  maxFontSize: number,
+  minFontSize: number,
+  maxLines: number,
+  lineHeightRatio = 1.16
 ) {
   if (!text.trim()) {
-    return;
+    return { fontSize: 0, lineHeight: 0, lineCount: 0, height: 0 };
   }
 
-  drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines);
+  return drawFittedTextBlock(ctx, text, {
+    x,
+    y,
+    width,
+    height,
+    weight,
+    maxFontSize,
+    minFontSize,
+    maxLines,
+    lineHeightRatio
+  });
 }
 
 function drawOptionalBadge(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, height: number, color: string) {
@@ -158,6 +189,7 @@ function classicHero(args: TemplateRenderArgs) {
 
   const padding = width * 0.07;
   const isMarquee = width / height > 2.1;
+  const spacing = getTemplateSpacing(width, height);
   const imageWidth = isMarquee ? width * 0.45 : width * 0.48;
   const imageHeight = height * 0.68;
   const imageX = width - padding - imageWidth;
@@ -166,26 +198,57 @@ function classicHero(args: TemplateRenderArgs) {
   ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
   fillRoundedRect(ctx, padding, padding, width - padding * 2, height - padding * 2, Math.min(48, width * 0.04));
 
+  const textX = padding + spacing.textInset;
+  const textRight = imageX - spacing.gutter;
+  const textWidth = clamp(textRight - textX, width * 0.26, width * 0.42);
+  const textTop = padding + spacing.textInset;
+  const textBottom = height - padding - spacing.textInset;
+  const textGap = spacing.stackGap;
+  const badgeText = textWithDefault(data.badge, "CHROME STORE READY");
+  const badgeHeight = Math.max(width < 700 ? 30 : 38, height * 0.075);
+  const hasBadge = badgeText.trim().length > 0;
+
   ctx.fillStyle = "#ffffff";
   const titleFontSize = isMarquee ? Math.max(34, height * 0.1) : Math.max(32, width * 0.055);
-  setFont(ctx, 850, titleFontSize);
-  drawOptionalWrappedText(
+  const titleBlock = drawOptionalFittedTextBlock(
     ctx,
     textWithDefault(data.title, "Launch faster with Chrome tools"),
-    padding * 1.35,
-    isMarquee ? height * 0.25 : height * 0.28,
-    width * 0.42,
-    titleFontSize * 1.18,
+    textX,
+    textTop,
+    textWidth,
+    isMarquee ? height * 0.25 : height * 0.36,
+    850,
+    titleFontSize,
+    Math.max(20, titleFontSize * 0.62),
     isMarquee ? 2 : 3
   );
 
+  const subtitleFontSize = isMarquee ? Math.max(17, height * 0.04) : Math.max(15, width * 0.021);
+  const subtitleY = textTop + titleBlock.height + textGap;
+  const subtitleHeight = Math.max(
+    subtitleFontSize * 1.45,
+    textBottom - subtitleY - (hasBadge ? badgeHeight + textGap : 0)
+  );
   ctx.globalAlpha = 0.88;
-  const subtitleFontSize = isMarquee ? Math.max(17, height * 0.04) : Math.max(17, width * 0.022);
-  setFont(ctx, 500, subtitleFontSize);
-  drawOptionalWrappedText(ctx, textWithDefault(data.subtitle, "Turn one screenshot into polished Chrome Web Store assets."), padding * 1.35, height * 0.56, width * 0.4, subtitleFontSize * 1.35, 2);
+  ctx.fillStyle = "#ffffff";
+  drawOptionalFittedTextBlock(
+    ctx,
+    textWithDefault(data.subtitle, "Turn one screenshot into polished Chrome Web Store assets."),
+    textX,
+    subtitleY,
+    textWidth,
+    subtitleHeight,
+    500,
+    subtitleFontSize,
+    Math.max(12, subtitleFontSize * 0.78),
+    2,
+    1.32
+  );
   ctx.globalAlpha = 1;
 
-  drawOptionalBadge(ctx, textWithDefault(data.badge, "CHROME STORE READY"), padding * 1.35, height * 0.72, Math.max(124, width * 0.23), Math.max(38, height * 0.075), data.themeColor);
+  if (hasBadge) {
+    drawOptionalBadge(ctx, badgeText, textX, textBottom - badgeHeight, Math.max(112, textWidth), badgeHeight, data.themeColor);
+  }
   drawImageCard(args, imageX, imageY, imageWidth, imageHeight, Math.min(36, width * 0.025));
 }
 
@@ -193,11 +256,15 @@ function browserFrame(args: TemplateRenderArgs) {
   const { ctx, data, size } = args;
   const { width, height } = size;
   const isMarquee = width / height > 2.1;
+  const spacing = getTemplateSpacing(width, height);
   ctx.fillStyle = "#f8fafc";
   ctx.fillRect(0, 0, width, height);
 
+  const containerX = width * 0.06;
+  const containerY = height * 0.08;
+  const containerHeight = height * 0.84;
   ctx.fillStyle = data.themeColor;
-  fillRoundedRect(ctx, width * 0.06, height * 0.08, width * 0.88, height * 0.84, width * 0.04);
+  fillRoundedRect(ctx, containerX, containerY, width * 0.88, containerHeight, width * 0.04);
 
   const frameX = width * 0.34;
   const frameY = height * 0.18;
@@ -210,20 +277,47 @@ function browserFrame(args: TemplateRenderArgs) {
   drawChromeDots(ctx, frameX + width * 0.035, frameY + height * 0.05, Math.max(9, width * 0.011));
   drawImageCard(args, frameX + 24, frameY + height * 0.11, frameWidth - 48, frameHeight - height * 0.15, width * 0.018);
 
+  const textX = containerX + spacing.textInset;
+  const textWidth = clamp(frameX - textX - spacing.gutter, width * 0.18, width * 0.24);
+  const textTop = containerY + spacing.textInset;
+  const textBottom = containerY + containerHeight - spacing.textInset;
+  const textGap = spacing.stackGap;
   ctx.fillStyle = "#ffffff";
   const titleFontSize = isMarquee ? Math.max(31, height * 0.09) : Math.max(31, width * 0.052);
-  setFont(ctx, 900, titleFontSize);
-  drawOptionalWrappedText(ctx, textWithDefault(data.title, "A smarter browser workflow"), width * 0.1, height * 0.25, width * 0.22, titleFontSize * 1.18, isMarquee ? 2 : 3);
+  const titleBlock = drawOptionalFittedTextBlock(
+    ctx,
+    textWithDefault(data.title, "A smarter browser workflow"),
+    textX,
+    textTop,
+    textWidth,
+    height * 0.34,
+    900,
+    titleFontSize,
+    Math.max(18, titleFontSize * 0.6),
+    isMarquee ? 2 : 3
+  );
   const subtitleFontSize = isMarquee ? Math.max(16, height * 0.038) : Math.max(16, width * 0.019);
-  setFont(ctx, 600, subtitleFontSize);
   ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
-  drawOptionalWrappedText(ctx, textWithDefault(data.subtitle, "Show your extension inside a clean Chrome frame."), width * 0.1, height * 0.58, width * 0.22, subtitleFontSize * 1.35, isMarquee ? 2 : 3);
+  drawOptionalFittedTextBlock(
+    ctx,
+    textWithDefault(data.subtitle, "Show your extension inside a clean Chrome frame."),
+    textX,
+    textTop + titleBlock.height + textGap,
+    textWidth,
+    textBottom - (textTop + titleBlock.height + textGap),
+    600,
+    subtitleFontSize,
+    Math.max(12, subtitleFontSize * 0.76),
+    isMarquee ? 2 : 3,
+    1.3
+  );
 }
 
 function darkTech(args: TemplateRenderArgs) {
   const { ctx, data, size } = args;
   const { width, height } = size;
   const isMarquee = width / height > 2.1;
+  const spacing = getTemplateSpacing(width, height);
   ctx.fillStyle = "#020617";
   ctx.fillRect(0, 0, width, height);
 
@@ -248,67 +342,156 @@ function darkTech(args: TemplateRenderArgs) {
 
   drawImageCard(args, width * 0.5, height * 0.16, width * 0.4, height * 0.66, width * 0.028);
 
+  const textX = width * 0.09 + spacing.textInset * 0.35;
+  const textWidth = clamp(width * 0.5 - textX - spacing.gutter, width * 0.27, width * 0.36);
+  const textTop = height * 0.16 + spacing.textInset;
+  const textBottom = height * 0.84 - spacing.textInset;
+  const textGap = spacing.stackGap;
+  const badgeText = textWithDefault(data.badge, "NEW EXTENSION");
+  const badgeHeight = Math.max(width < 700 ? 28 : 36, height * 0.072);
+  const hasBadge = badgeText.trim().length > 0;
   ctx.fillStyle = "#ffffff";
   const titleFontSize = isMarquee ? Math.max(34, height * 0.1) : Math.max(32, width * 0.056);
-  setFont(ctx, 900, titleFontSize);
-  drawOptionalWrappedText(ctx, textWithDefault(data.title, "Power up your Chrome tab"), width * 0.09, height * 0.25, width * 0.36, titleFontSize * 1.18, isMarquee ? 2 : 3);
+  const titleBlock = drawOptionalFittedTextBlock(
+    ctx,
+    textWithDefault(data.title, "Power up your Chrome tab"),
+    textX,
+    textTop,
+    textWidth,
+    isMarquee ? height * 0.26 : height * 0.36,
+    900,
+    titleFontSize,
+    Math.max(20, titleFontSize * 0.62),
+    isMarquee ? 2 : 3
+  );
   ctx.fillStyle = "#a5b4fc";
   const subtitleFontSize = isMarquee ? Math.max(17, height * 0.04) : Math.max(17, width * 0.021);
-  setFont(ctx, 600, subtitleFontSize);
-  drawOptionalWrappedText(ctx, textWithDefault(data.subtitle, "A high-contrast template for developer and productivity extensions."), width * 0.09, height * 0.58, width * 0.34, subtitleFontSize * 1.35, 2);
-  drawOptionalBadge(ctx, textWithDefault(data.badge, "NEW EXTENSION"), width * 0.09, height * 0.72, width * 0.22, height * 0.072, data.themeColor);
+  const subtitleY = textTop + titleBlock.height + textGap;
+  drawOptionalFittedTextBlock(
+    ctx,
+    textWithDefault(data.subtitle, "A high-contrast template for developer and productivity extensions."),
+    textX,
+    subtitleY,
+    textWidth,
+    textBottom - subtitleY - (hasBadge ? badgeHeight + textGap : 0),
+    600,
+    subtitleFontSize,
+    Math.max(12, subtitleFontSize * 0.76),
+    2,
+    1.32
+  );
+  if (hasBadge) {
+    drawOptionalBadge(ctx, badgeText, textX, textBottom - badgeHeight, Math.max(112, textWidth * 0.68), badgeHeight, data.themeColor);
+  }
 }
 
 function minimalWhite(args: TemplateRenderArgs) {
   const { ctx, data, size } = args;
   const { width, height } = size;
   const isMarquee = width / height > 2.1;
+  const spacing = getTemplateSpacing(width, height);
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, height);
 
+  const containerX = width * 0.055;
+  const containerY = height * 0.08;
+  const containerHeight = height * 0.84;
   ctx.fillStyle = "#f1f5f9";
-  fillRoundedRect(ctx, width * 0.055, height * 0.08, width * 0.89, height * 0.84, width * 0.04);
+  fillRoundedRect(ctx, containerX, containerY, width * 0.89, containerHeight, width * 0.04);
   ctx.fillStyle = data.themeColor;
-  fillRoundedRect(ctx, width * 0.08, height * 0.12, width * 0.055, width * 0.055, width * 0.016);
+  fillRoundedRect(ctx, containerX + spacing.textInset, containerY + spacing.textInset * 0.8, width * 0.055, width * 0.055, width * 0.016);
 
+  const imageX = width * 0.52;
+  const textX = containerX + spacing.textInset;
+  const textWidth = clamp(imageX - textX - spacing.gutter, width * 0.28, width * 0.39);
+  const textTop = containerY + spacing.textInset + width * 0.075;
+  const textBottom = containerY + containerHeight - spacing.textInset;
+  const textGap = spacing.stackGap;
   ctx.fillStyle = "#0f172a";
   const titleFontSize = isMarquee ? Math.max(34, height * 0.1) : Math.max(34, width * 0.056);
-  setFont(ctx, 900, titleFontSize);
-  drawOptionalWrappedText(ctx, textWithDefault(data.title, "Clean assets for your extension"), width * 0.08, height * 0.28, width * 0.39, titleFontSize * 1.18, isMarquee ? 2 : 3);
+  const titleBlock = drawOptionalFittedTextBlock(
+    ctx,
+    textWithDefault(data.title, "Clean assets for your extension"),
+    textX,
+    textTop,
+    textWidth,
+    isMarquee ? height * 0.26 : height * 0.36,
+    900,
+    titleFontSize,
+    Math.max(20, titleFontSize * 0.62),
+    isMarquee ? 2 : 3
+  );
   ctx.fillStyle = "#475569";
   const subtitleFontSize = isMarquee ? Math.max(17, height * 0.04) : Math.max(17, width * 0.021);
-  setFont(ctx, 500, subtitleFontSize);
-  drawOptionalWrappedText(ctx, textWithDefault(data.subtitle, "A minimal layout for polished Chrome Store screenshots."), width * 0.08, height * 0.62, width * 0.36, subtitleFontSize * 1.35, 2);
+  drawOptionalFittedTextBlock(
+    ctx,
+    textWithDefault(data.subtitle, "A minimal layout for polished Chrome Store screenshots."),
+    textX,
+    textTop + titleBlock.height + textGap,
+    textWidth,
+    textBottom - (textTop + titleBlock.height + textGap),
+    500,
+    subtitleFontSize,
+    Math.max(12, subtitleFontSize * 0.76),
+    2,
+    1.32
+  );
 
-  drawImageCard(args, width * 0.52, height * 0.2, width * 0.36, height * 0.58, width * 0.03);
+  drawImageCard(args, imageX, height * 0.2, width * 0.36, height * 0.58, width * 0.03);
 }
 
 function featureCards(args: TemplateRenderArgs) {
   const { ctx, data, size } = args;
   const { width, height } = size;
   const isMarquee = width / height > 2.1;
+  const spacing = getTemplateSpacing(width, height);
   drawGradientBase(ctx, width, height, data.themeColor);
 
   drawImageCard(args, width * 0.42, height * 0.14, width * 0.5, height * 0.68, width * 0.028);
 
+  const imageX = width * 0.42;
+  const textX = width * 0.08 + spacing.textInset * 0.25;
+  const textWidth = clamp(imageX - textX - spacing.gutter, width * 0.24, width * 0.3);
+  const textTop = height * 0.14 + spacing.textInset;
   ctx.fillStyle = "#ffffff";
   const titleFontSize = isMarquee ? Math.max(31, height * 0.09) : Math.max(31, width * 0.052);
-  setFont(ctx, 900, titleFontSize);
-  drawOptionalWrappedText(ctx, textWithDefault(data.title, "Everything you need, one click away"), width * 0.08, height * 0.2, width * 0.3, titleFontSize * 1.18, isMarquee ? 2 : 3);
+  const titleBlock = drawOptionalFittedTextBlock(
+    ctx,
+    textWithDefault(data.title, "Everything you need, one click away"),
+    textX,
+    textTop,
+    textWidth,
+    height * 0.31,
+    900,
+    titleFontSize,
+    Math.max(18, titleFontSize * 0.6),
+    isMarquee ? 2 : 3
+  );
 
   const cards = [
     textWithDefault(data.feature, "Capture, compose, and export store assets locally."),
     textWithDefault(data.cta, "No account"),
     textWithDefault(data.subtitle, "Private by design")
   ].filter((card) => card.trim());
+  const cardGap = spacing.stackGap;
+  const firstCardY = Math.max(height * 0.52, textTop + titleBlock.height + cardGap);
+  const cardHeight = height * 0.082;
+  const cardPadding = clamp(cardHeight * 0.55, 12, 30);
+  const maxCardWidth = Math.min(width * 0.28, textWidth);
+  const baseCardFontSize = Math.max(14, width * 0.018);
+  const minCardFontSize = Math.max(10, baseCardFontSize * 0.7);
+  const sharedCardFontSize = cards.reduce((fontSize, card) => {
+    setFont(ctx, 800, baseCardFontSize);
+    const measuredWidth = ctx.measureText(card.trim()).width;
+    const fittedFontSize = measuredWidth > 0 ? Math.floor(baseCardFontSize * ((maxCardWidth - cardPadding * 2) / measuredWidth)) : baseCardFontSize;
+
+    return Math.max(minCardFontSize, Math.min(fontSize, fittedFontSize));
+  }, baseCardFontSize);
+
   cards.forEach((card, index) => {
-    const cardY = height * (0.54 + index * 0.115);
-    const cardHeight = height * 0.082;
-    const cardX = width * 0.08;
-    const maxCardWidth = width * 0.28;
-    const fontSize = Math.max(14, width * 0.018);
-    const cardPadding = cardHeight * 0.55;
-    setFont(ctx, 800, fontSize);
+    const cardY = firstCardY + index * height * 0.115;
+    const cardX = textX;
+    setFont(ctx, 800, sharedCardFontSize);
     const cardWidth = Math.min(maxCardWidth, Math.max(cardHeight * 2.7, ctx.measureText(card.trim()).width + cardPadding * 2));
 
     ctx.save();
@@ -330,7 +513,16 @@ function featureCards(args: TemplateRenderArgs) {
     ctx.fillStyle = data.themeColor;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    drawFittedSingleLineText(ctx, card.trim(), cardX + cardWidth / 2, cardY + cardHeight / 2, cardWidth - cardPadding * 1.35, 800, fontSize, Math.max(10, fontSize * 0.7));
+    drawFittedSingleLineText(
+      ctx,
+      card.trim(),
+      cardX + cardWidth / 2,
+      cardY + cardHeight / 2,
+      cardWidth - cardPadding * 2,
+      800,
+      sharedCardFontSize,
+      sharedCardFontSize
+    );
     ctx.textAlign = "left";
     ctx.textBaseline = "alphabetic";
   });
@@ -340,29 +532,65 @@ function bigBadge(args: TemplateRenderArgs) {
   const { ctx, data, size } = args;
   const { width, height } = size;
   const isMarquee = width / height > 2.1;
+  const spacing = getTemplateSpacing(width, height);
   ctx.fillStyle = shade(data.themeColor, 8);
   ctx.fillRect(0, 0, width, height);
+  const containerX = width * 0.07;
+  const containerY = height * 0.1;
+  const containerHeight = height * 0.8;
   ctx.fillStyle = "#ffffff";
-  fillRoundedRect(ctx, width * 0.07, height * 0.1, width * 0.86, height * 0.8, width * 0.05);
+  fillRoundedRect(ctx, containerX, containerY, width * 0.86, containerHeight, width * 0.05);
 
-  drawOptionalBadge(ctx, textWithDefault(data.badge, "FEATURED"), width * 0.1, height * 0.15, width * 0.3, height * 0.12, data.themeColor);
+  const imageX = width * 0.56;
+  const textX = containerX + spacing.textInset;
+  const textWidth = clamp(imageX - textX - spacing.gutter, width * 0.28, width * 0.38);
+  const textBottom = containerY + containerHeight - spacing.textInset;
+  const textGap = spacing.stackGap;
+  const badgeText = textWithDefault(data.badge, "FEATURED");
+  const badgeY = containerY + spacing.textInset;
+  const badgeHeight = Math.max(width < 700 ? 30 : 42, height * 0.105);
+
+  drawOptionalBadge(ctx, badgeText, textX, badgeY, Math.max(110, textWidth), badgeHeight, data.themeColor);
 
   ctx.fillStyle = "#111827";
   const titleFontSize = isMarquee ? Math.max(34, height * 0.1) : Math.max(36, width * 0.06);
-  setFont(ctx, 900, titleFontSize);
-  drawOptionalWrappedText(ctx, textWithDefault(data.title, "Make Chrome feel personal"), width * 0.1, isMarquee ? height * 0.36 : height * 0.38, width * 0.38, titleFontSize * 1.18, isMarquee ? 2 : 3);
+  const titleY = badgeY + (badgeText.trim() ? badgeHeight + textGap : 0);
+  const titleBlock = drawOptionalFittedTextBlock(
+    ctx,
+    textWithDefault(data.title, "Make Chrome feel personal"),
+    textX,
+    titleY,
+    textWidth,
+    isMarquee ? height * 0.25 : height * 0.34,
+    900,
+    titleFontSize,
+    Math.max(20, titleFontSize * 0.6),
+    isMarquee ? 2 : 3
+  );
   ctx.fillStyle = "#64748b";
   const subtitleFontSize = isMarquee ? Math.max(17, height * 0.04) : Math.max(17, width * 0.021);
-  setFont(ctx, 600, subtitleFontSize);
-  drawOptionalWrappedText(ctx, textWithDefault(data.subtitle, "A bold editorial style for benefit-led store assets."), width * 0.1, height * 0.72, width * 0.34, subtitleFontSize * 1.35, 2);
+  drawOptionalFittedTextBlock(
+    ctx,
+    textWithDefault(data.subtitle, "A bold editorial style for benefit-led store assets."),
+    textX,
+    titleY + titleBlock.height + textGap,
+    textWidth,
+    textBottom - (titleY + titleBlock.height + textGap),
+    600,
+    subtitleFontSize,
+    Math.max(12, subtitleFontSize * 0.76),
+    2,
+    1.32
+  );
 
-  drawImageCard(args, width * 0.56, height * 0.2, width * 0.3, height * 0.58, width * 0.032);
+  drawImageCard(args, imageX, height * 0.2, width * 0.3, height * 0.58, width * 0.032);
 }
 
 function chromeBlue(args: TemplateRenderArgs) {
   const { ctx, data, size } = args;
   const { width, height } = size;
   const isMarquee = width / height > 2.1;
+  const spacing = getTemplateSpacing(width, height);
   ctx.fillStyle = "#e0f2fe";
   ctx.fillRect(0, 0, width, height);
   ctx.fillStyle = data.themeColor;
@@ -378,24 +606,55 @@ function chromeBlue(args: TemplateRenderArgs) {
   ctx.arc(width * 0.16, height * 0.12, width * 0.12, 0, Math.PI * 2);
   ctx.fill();
 
+  const containerX = width * 0.06;
+  const containerY = height * 0.09;
+  const containerHeight = height * 0.82;
   ctx.fillStyle = "rgba(255, 255, 255, 0.86)";
-  fillRoundedRect(ctx, width * 0.06, height * 0.09, width * 0.88, height * 0.82, width * 0.045);
-  drawImageCard(args, width * 0.47, height * 0.18, width * 0.42, height * 0.62, width * 0.032);
+  fillRoundedRect(ctx, containerX, containerY, width * 0.88, containerHeight, width * 0.045);
+  const imageX = width * 0.47;
+  drawImageCard(args, imageX, height * 0.18, width * 0.42, height * 0.62, width * 0.032);
 
+  const textX = containerX + spacing.textInset;
+  const textWidth = clamp(imageX - textX - spacing.gutter, width * 0.25, width * 0.33);
+  const textTop = containerY + spacing.textInset + height * 0.08;
+  const textBottom = containerY + containerHeight - spacing.textInset;
+  const textGap = spacing.stackGap;
   ctx.fillStyle = "#0f172a";
   const titleFontSize = isMarquee ? Math.max(34, height * 0.1) : Math.max(34, width * 0.057);
-  setFont(ctx, 900, titleFontSize);
-  drawOptionalWrappedText(ctx, textWithDefault(data.title, "Built for Chrome users"), width * 0.1, height * 0.28, width * 0.33, titleFontSize * 1.18, isMarquee ? 2 : 3);
+  const titleBlock = drawOptionalFittedTextBlock(
+    ctx,
+    textWithDefault(data.title, "Built for Chrome users"),
+    textX,
+    textTop,
+    textWidth,
+    isMarquee ? height * 0.26 : height * 0.36,
+    900,
+    titleFontSize,
+    Math.max(20, titleFontSize * 0.62),
+    isMarquee ? 2 : 3
+  );
   ctx.fillStyle = "#334155";
   const subtitleFontSize = isMarquee ? Math.max(17, height * 0.04) : Math.max(17, width * 0.021);
-  setFont(ctx, 600, subtitleFontSize);
-  drawOptionalWrappedText(ctx, textWithDefault(data.subtitle, "A friendly Chrome-inspired layout with soft shapes."), width * 0.1, height * 0.62, width * 0.31, subtitleFontSize * 1.35, 2);
+  drawOptionalFittedTextBlock(
+    ctx,
+    textWithDefault(data.subtitle, "A friendly Chrome-inspired layout with soft shapes."),
+    textX,
+    textTop + titleBlock.height + textGap,
+    textWidth,
+    textBottom - (textTop + titleBlock.height + textGap),
+    600,
+    subtitleFontSize,
+    Math.max(12, subtitleFontSize * 0.76),
+    2,
+    1.32
+  );
 }
 
 function diagonalShowcase(args: TemplateRenderArgs) {
   const { ctx, data, size } = args;
   const { width, height } = size;
   const isMarquee = width / height > 2.1;
+  const spacing = getTemplateSpacing(width, height);
   ctx.fillStyle = "#111827";
   ctx.fillRect(0, 0, width, height);
   ctx.fillStyle = data.themeColor;
@@ -413,14 +672,41 @@ function diagonalShowcase(args: TemplateRenderArgs) {
   drawImageCard(args, -width * 0.22, -height * 0.32, width * 0.44, height * 0.64, width * 0.03);
   ctx.restore();
 
+  const textX = width * 0.08 + spacing.textInset * 0.25;
+  const imageLeft = width * 0.42;
+  const textWidth = clamp(imageLeft - textX - spacing.gutter, width * 0.25, width * 0.34);
+  const textTop = spacing.textInset + height * 0.16;
+  const textBottom = height - spacing.textInset - height * 0.12;
+  const textGap = spacing.stackGap;
   ctx.fillStyle = "#ffffff";
   const titleFontSize = isMarquee ? Math.max(33, height * 0.1) : Math.max(33, width * 0.055);
-  setFont(ctx, 900, titleFontSize);
-  drawOptionalWrappedText(ctx, textWithDefault(data.title, "Show the moment it clicks"), width * 0.08, height * 0.26, width * 0.34, titleFontSize * 1.18, isMarquee ? 2 : 3);
+  const titleBlock = drawOptionalFittedTextBlock(
+    ctx,
+    textWithDefault(data.title, "Show the moment it clicks"),
+    textX,
+    textTop,
+    textWidth,
+    isMarquee ? height * 0.26 : height * 0.36,
+    900,
+    titleFontSize,
+    Math.max(20, titleFontSize * 0.62),
+    isMarquee ? 2 : 3
+  );
   ctx.fillStyle = "#cbd5e1";
   const subtitleFontSize = isMarquee ? Math.max(17, height * 0.04) : Math.max(17, width * 0.021);
-  setFont(ctx, 600, subtitleFontSize);
-  drawOptionalWrappedText(ctx, textWithDefault(data.subtitle, "A dynamic angled layout for action-focused extensions."), width * 0.08, height * 0.61, width * 0.31, subtitleFontSize * 1.35, 2);
+  drawOptionalFittedTextBlock(
+    ctx,
+    textWithDefault(data.subtitle, "A dynamic angled layout for action-focused extensions."),
+    textX,
+    textTop + titleBlock.height + textGap,
+    textWidth,
+    textBottom - (textTop + titleBlock.height + textGap),
+    600,
+    subtitleFontSize,
+    Math.max(12, subtitleFontSize * 0.76),
+    2,
+    1.32
+  );
 }
 
 export const templates: Template[] = [

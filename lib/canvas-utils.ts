@@ -26,37 +26,98 @@ export function drawWrappedText(
   const sourceText = text.trim();
   const fontSize = getCanvasFontSize(ctx);
   const safeLineHeight = Math.max(lineHeight, fontSize * 1.16);
-  const words = tokenizeText(sourceText);
-  const lines: string[] = [];
-  let currentLine = "";
+  const { lines, truncated } = wrapTextLines(ctx, sourceText, maxWidth, maxLines);
+  lines.forEach((line, index) => {
+    const suffix = index === maxLines - 1 && truncated ? "..." : "";
+    ctx.fillText(`${line}${suffix}`, x, y + index * safeLineHeight);
+  });
+}
 
-  for (const word of words) {
-    const separator = shouldInsertSpace(currentLine, word) ? " " : "";
-    const nextLine = currentLine ? `${currentLine}${separator}${word}` : word;
-    if (ctx.measureText(nextLine).width <= maxWidth) {
-      currentLine = nextLine;
-    } else {
-      if (currentLine) {
-        lines.push(currentLine);
-      }
-      currentLine = word;
-    }
+export type FittedTextBlockResult = {
+  fontSize: number;
+  lineHeight: number;
+  lineCount: number;
+  height: number;
+};
 
-    if (lines.length >= maxLines) {
+type FittedTextBlockOptions = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  weight: number;
+  maxFontSize: number;
+  minFontSize: number;
+  lineHeightRatio?: number;
+  maxLines: number;
+  family?: string;
+};
+
+export function drawFittedTextBlock(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  {
+    x,
+    y,
+    width,
+    height,
+    weight,
+    maxFontSize,
+    minFontSize,
+    lineHeightRatio = 1.16,
+    maxLines,
+    family = "Inter, Arial, sans-serif"
+  }: FittedTextBlockOptions
+): FittedTextBlockResult {
+  const sourceText = text.trim();
+  if (!sourceText || width <= 0 || height <= 0 || maxLines <= 0) {
+    return { fontSize: 0, lineHeight: 0, lineCount: 0, height: 0 };
+  }
+
+  const safeMinFontSize = Math.max(8, Math.min(minFontSize, maxFontSize));
+  let fontSize = Math.max(safeMinFontSize, maxFontSize);
+  let lineHeight = fontSize * lineHeightRatio;
+  let lines: string[] = [];
+  let truncated = false;
+
+  for (let nextFontSize = fontSize; nextFontSize >= safeMinFontSize; nextFontSize -= 1) {
+    setFont(ctx, weight, nextFontSize, family);
+    const nextLineHeight = nextFontSize * lineHeightRatio;
+    const availableLines = Math.max(1, Math.min(maxLines, Math.floor(height / nextLineHeight)));
+    const wrapped = wrapTextLines(ctx, sourceText, width, availableLines);
+
+    fontSize = nextFontSize;
+    lineHeight = nextLineHeight;
+    lines = wrapped.lines;
+    truncated = wrapped.truncated;
+
+    if (lines.length * lineHeight <= height && lines.length > 0) {
       break;
     }
   }
 
-  if (currentLine && lines.length < maxLines) {
-    lines.push(currentLine);
+  if (lines.length === 0) {
+    return { fontSize, lineHeight, lineCount: 0, height: 0 };
   }
 
-  const visibleText = lines.join("");
-  const shouldTruncate = sourceText.replace(/\s+/g, "").length > visibleText.replace(/\s+/g, "").length;
+  const lastIndex = lines.length - 1;
+  if (truncated) {
+    lines[lastIndex] = fitLineWithEllipsis(ctx, lines[lastIndex], width);
+  }
+
+  ctx.save();
+  ctx.textBaseline = "top";
   lines.forEach((line, index) => {
-    const suffix = index === maxLines - 1 && shouldTruncate ? "..." : "";
-    ctx.fillText(`${line}${suffix}`, x, y + index * safeLineHeight);
+    ctx.fillText(line, x, y + index * lineHeight);
   });
+  ctx.restore();
+
+  return {
+    fontSize,
+    lineHeight,
+    lineCount: lines.length,
+    height: lines.length * lineHeight
+  };
 }
 
 export function drawFittedSingleLineText(
@@ -103,6 +164,47 @@ export function drawFittedSingleLineText(
 function getCanvasFontSize(ctx: CanvasRenderingContext2D) {
   const match = /(\d+(?:\.\d+)?)px/.exec(ctx.font);
   return match ? Number(match[1]) : 16;
+}
+
+function wrapTextLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, maxLines: number) {
+  const sourceText = text.trim();
+  const words = tokenizeText(sourceText);
+  const lines: string[] = [];
+  let currentLine = "";
+  let consumedTokens = 0;
+
+  for (const word of words) {
+    const separator = shouldInsertSpace(currentLine, word) ? " " : "";
+    const nextLine = currentLine ? `${currentLine}${separator}${word}` : word;
+    if (ctx.measureText(nextLine).width <= maxWidth || !currentLine) {
+      currentLine = nextLine;
+      consumedTokens += 1;
+    } else {
+      lines.push(currentLine);
+      if (lines.length >= maxLines) {
+        return { lines, truncated: consumedTokens < words.length };
+      }
+      currentLine = word;
+      consumedTokens += 1;
+    }
+  }
+
+  if (currentLine && lines.length < maxLines) {
+    lines.push(currentLine);
+  }
+
+  return { lines, truncated: consumedTokens < words.length };
+}
+
+function fitLineWithEllipsis(ctx: CanvasRenderingContext2D, line: string, maxWidth: number) {
+  const ellipsis = "...";
+  let nextLine = line.trimEnd();
+
+  while (nextLine && ctx.measureText(`${nextLine}${ellipsis}`).width > maxWidth) {
+    nextLine = nextLine.slice(0, -1).trimEnd();
+  }
+
+  return nextLine ? `${nextLine}${ellipsis}` : ellipsis;
 }
 
 function tokenizeText(text: string) {
