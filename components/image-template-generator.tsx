@@ -10,27 +10,25 @@ import type { EditableField, ExportSize, HistoryItem, ImageFitMode, Template, Te
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 const initialData: TemplateData = {
-  title: "Launch visuals in minutes",
-  subtitle: "Upload one image, choose a template, and export every size locally.",
-  badge: "LOCAL PNG EXPORT",
-  cta: "Generate now",
-  price: "$29",
-  themeColor: "#7c3aed",
+  title: "Launch faster with Chrome tools",
+  subtitle: "Turn one screenshot into polished Chrome Web Store assets.",
+  badge: "CHROME STORE READY",
+  cta: "Private by design",
+  themeColor: "#2563eb",
   fitMode: "cover"
 };
 
 const fieldLabels: Record<EditableField, string> = {
-  title: "标题",
-  subtitle: "副标题",
-  badge: "标签 / 角标",
-  cta: "CTA 文案",
-  price: "价格 / 折扣"
+  title: "Title",
+  subtitle: "Subtitle",
+  badge: "Badge",
+  cta: "Feature Point"
 };
 
 const fitModeOptions: Array<{ label: string; value: ImageFitMode }> = [
-  { label: "裁剪铺满", value: "cover" },
-  { label: "完整适配", value: "contain" },
-  { label: "居中原图", value: "center" }
+  { label: "Crop to Fill", value: "cover" },
+  { label: "Fit Entire Image", value: "contain" },
+  { label: "Center Original", value: "center" }
 ];
 
 type PreviewCardProps = {
@@ -56,7 +54,7 @@ function PreviewCard({ template, image, data, size, onDownload }: PreviewCardPro
       const previewScale = Math.min(1, 540 / size.width);
       renderTemplateToCanvas(canvas, template, image, data, size, previewScale);
     } catch (renderError) {
-      setError(renderError instanceof Error ? renderError.message : "渲染失败");
+      setError(renderError instanceof Error ? renderError.message : "Render failed");
     }
   }, [data, image, size, template]);
 
@@ -70,11 +68,11 @@ function PreviewCard({ template, image, data, size, onDownload }: PreviewCardPro
           </span>
         </div>
         <button type="button" className="button button--ghost" onClick={() => onDownload(size)}>
-          下载
+          Download
         </button>
       </div>
       <div className="preview-stage" style={{ aspectRatio: `${size.width} / ${size.height}` }}>
-        {error ? <p className="error-text">{error}</p> : <canvas ref={canvasRef} aria-label={`${size.label} 预览`} />}
+        {error ? <p className="error-text">{error}</p> : <canvas ref={canvasRef} aria-label={`${size.label} preview`} />}
       </div>
     </article>
   );
@@ -92,7 +90,7 @@ function readFileAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("读取图片失败"));
+    reader.onerror = () => reject(new Error("Failed to read the image."));
     reader.readAsDataURL(file);
   });
 }
@@ -107,6 +105,8 @@ export function ImageTemplateGenerator() {
   const [message, setMessage] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const fieldInputRefs = useRef<Partial<Record<EditableField, HTMLInputElement | null>>>({});
 
   const selectedTemplate = useMemo(() => templates.find((template) => template.id === templateId) ?? defaultTemplate, [templateId]);
   const selectedSizes = useMemo(
@@ -128,12 +128,12 @@ export function ImageTemplateGenerator() {
     setMessage("");
 
     if (!file.type.startsWith("image/")) {
-      setMessage("请上传 PNG、JPG 或 WebP 图片。");
+      setMessage("Upload a PNG, JPG, or WebP image.");
       return;
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      setMessage("图片超过 10 MB，请压缩后再上传。");
+      setMessage("The image is over 10 MB. Compress it and try again.");
       return;
     }
 
@@ -142,14 +142,21 @@ export function ImageTemplateGenerator() {
       const loadedImage = await createImageFromDataUrl(dataUrl);
       setImageDataUrl(dataUrl);
       setImage(loadedImage);
-      setMessage("图片已在本地加载，没有上传到服务器。");
+      setMessage("Image loaded locally. Nothing was uploaded to a server.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "图片加载失败");
+      setMessage(error instanceof Error ? error.message : "Failed to load the image.");
     }
   }
 
   function updateData<K extends keyof TemplateData>(key: K, value: TemplateData[K]) {
     setData((current) => ({ ...current, [key]: value }));
+  }
+
+  function clearField(field: EditableField) {
+    updateData(field, "");
+    requestAnimationFrame(() => {
+      fieldInputRefs.current[field]?.focus();
+    });
   }
 
   function toggleSize(sizeId: string) {
@@ -201,7 +208,7 @@ export function ImageTemplateGenerator() {
 
   async function handleDownloadSize(size: ExportSize) {
     if (!image) {
-      setMessage("请先上传图片。");
+      setMessage("Upload an image first.");
       return;
     }
 
@@ -209,9 +216,9 @@ export function ImageTemplateGenerator() {
       setIsDownloading(true);
       await downloadSize(selectedTemplate, image, data, size);
       persistHistory();
-      setMessage(`${size.label} 已开始下载。`);
+      setMessage(`${size.label} download started.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "下载失败");
+      setMessage(error instanceof Error ? error.message : "Download failed.");
     } finally {
       setIsDownloading(false);
     }
@@ -219,12 +226,12 @@ export function ImageTemplateGenerator() {
 
   async function handleDownloadAll() {
     if (!image) {
-      setMessage("请先上传图片。");
+      setMessage("Upload an image first.");
       return;
     }
 
     if (selectedSizes.length === 0) {
-      setMessage("请至少选择一个导出尺寸。");
+      setMessage("Select at least one export size.");
       return;
     }
 
@@ -232,9 +239,9 @@ export function ImageTemplateGenerator() {
       setIsDownloading(true);
       await downloadAllSizes(selectedTemplate, image, data, selectedSizes);
       persistHistory();
-      setMessage(`已触发 ${selectedSizes.length} 个 PNG 下载。`);
+      setMessage(`${selectedSizes.length} PNG downloads started.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "批量下载失败");
+      setMessage(error instanceof Error ? error.message : "Batch download failed.");
     } finally {
       setIsDownloading(false);
     }
@@ -251,12 +258,14 @@ export function ImageTemplateGenerator() {
         const restoredImage = await createImageFromDataUrl(item.imageDataUrl);
         setImageDataUrl(item.imageDataUrl);
         setImage(restoredImage);
-        setMessage("已恢复历史记录。");
+        setMessage("History item restored.");
+        setIsHistoryOpen(false);
       } catch {
-        setMessage("已恢复配置，但历史图片无法加载。");
+        setMessage("Settings restored, but the saved image could not be loaded.");
       }
     } else {
-      setMessage("已恢复配置，请重新上传原图。");
+      setMessage("Settings restored. Upload the source image again.");
+      setIsHistoryOpen(false);
     }
   }
 
@@ -265,14 +274,14 @@ export function ImageTemplateGenerator() {
       <section className="hero">
         <div>
           <p className="eyebrow">TemplatePic MVP</p>
-          <h1>本地图片模板生成器</h1>
+          <h1>Chrome Store Image Template Generator</h1>
           <p>
-            上传图片、选择模板、填写文案，一次生成 Chrome Store、社媒、电商和广告所需的多尺寸 PNG。
-            全部处理都在浏览器本地完成。
+            Create Chrome Web Store assets from one extension screenshot. Pick a promotional template, edit the copy, and export
+            1280x800, 1400x560, and 440x280 PNGs. Everything runs locally in your browser.
           </p>
         </div>
         <button type="button" className="button button--primary" disabled={!image || isDownloading} onClick={handleDownloadAll}>
-          {isDownloading ? "正在生成..." : "下载全部选中尺寸"}
+          {isDownloading ? "Generating..." : "Download Selected Sizes"}
         </button>
       </section>
 
@@ -281,7 +290,7 @@ export function ImageTemplateGenerator() {
           <section>
             <div className="section-title">
               <span>1</span>
-              <h2>上传图片</h2>
+              <h2>Upload Image</h2>
             </div>
             <label
               className={`upload-box ${isDragging ? "upload-box--active" : ""}`}
@@ -311,11 +320,11 @@ export function ImageTemplateGenerator() {
               />
               {imageDataUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={imageDataUrl} alt="已上传图片预览" />
+                <img src={imageDataUrl} alt="Uploaded image preview" />
               ) : (
                 <div>
-                  <strong>点击或拖拽上传</strong>
-                  <span>PNG / JPG / WebP，最大 10 MB</span>
+                  <strong>Click or drag to upload</strong>
+                  <span>PNG / JPG / WebP, up to 10 MB</span>
                 </div>
               )}
             </label>
@@ -324,7 +333,7 @@ export function ImageTemplateGenerator() {
           <section>
             <div className="section-title">
               <span>2</span>
-              <h2>选择模板</h2>
+              <h2>Choose Template</h2>
             </div>
             <div className="template-list">
               {templates.map((template) => (
@@ -344,21 +353,34 @@ export function ImageTemplateGenerator() {
           <section>
             <div className="section-title">
               <span>3</span>
-              <h2>编辑文案</h2>
+              <h2>Edit Copy</h2>
             </div>
             <div className="field-grid">
               {selectedTemplate.fields.map((field) => (
-                <label key={field} className="field">
-                  <span>{fieldLabels[field]}</span>
-                  <input value={data[field]} onChange={(event) => updateData(field, event.target.value)} />
-                </label>
+                <div key={field} className="field">
+                  <div className="field__heading">
+                    <label htmlFor={`copy-${field}`}>{fieldLabels[field]}</label>
+                    <button type="button" className="field__clear" disabled={!data[field].trim()} onClick={() => clearField(field)}>
+                      Clear
+                    </button>
+                  </div>
+                  <input
+                    id={`copy-${field}`}
+                    ref={(input) => {
+                      fieldInputRefs.current[field] = input;
+                    }}
+                    placeholder="Cleared. Type to restore this copy."
+                    value={data[field]}
+                    onChange={(event) => updateData(field, event.target.value)}
+                  />
+                </div>
               ))}
               <label className="field">
-                <span>主题色</span>
+                <span>Theme Color</span>
                 <input type="color" value={data.themeColor} onChange={(event) => updateData("themeColor", event.target.value)} />
               </label>
               <label className="field">
-                <span>图片位置</span>
+                <span>Image Fit</span>
                 <select value={data.fitMode} onChange={(event) => updateData("fitMode", event.target.value as ImageFitMode)}>
                   {fitModeOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -373,7 +395,7 @@ export function ImageTemplateGenerator() {
           <section>
             <div className="section-title">
               <span>4</span>
-              <h2>导出尺寸</h2>
+              <h2>Export Sizes</h2>
             </div>
             <div className="size-list">
               {selectedTemplate.sizes.map((size) => (
@@ -395,17 +417,17 @@ export function ImageTemplateGenerator() {
           <div className="previews__header">
             <div>
               <p className="eyebrow">Live Preview</p>
-              <h2>多尺寸实时预览</h2>
+              <h2>Multi-size Preview</h2>
             </div>
             <button type="button" className="button button--secondary" disabled={!image} onClick={persistHistory}>
-              保存到历史
+              Save to History
             </button>
           </div>
 
           {!image ? (
             <div className="empty-state">
-              <strong>先上传一张图片</strong>
-              <span>上传后会按当前模板和尺寸自动生成预览。</span>
+              <strong>Upload an image first</strong>
+              <span>Previews will render automatically with the current template and selected sizes.</span>
             </div>
           ) : (
             <div className="preview-grid">
@@ -423,35 +445,49 @@ export function ImageTemplateGenerator() {
           )}
         </section>
 
-        <aside className="panel history">
-          <div className="section-title">
-            <span>5</span>
-            <h2>最近历史</h2>
-          </div>
-          {history.length === 0 ? (
-            <p className="muted">生成或保存后会在这里保留最近 10 条记录。</p>
-          ) : (
-            <div className="history-list">
-              {history.map((item) => {
-                const template = templates.find((entry) => entry.id === item.templateId);
-                return (
-                  <button type="button" key={item.id} className="history-item" onClick={() => void restoreHistory(item)}>
-                    {item.thumbnailDataUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={item.thumbnailDataUrl} alt="" />
-                    ) : (
-                      <span className="history-item__placeholder" />
-                    )}
-                    <span>
-                      <strong>{template?.name ?? "未知模板"}</strong>
-                      {new Date(item.createdAt).toLocaleString("zh-CN")}
-                    </span>
-                  </button>
-                );
-              })}
+      </div>
+
+      <div className="floating-history">
+        {isHistoryOpen ? (
+          <aside className="panel history-popover">
+            <div className="history-popover__header">
+              <div className="section-title">
+                <span>5</span>
+                <h2>Recent History</h2>
+              </div>
+              <button type="button" className="button button--ghost" onClick={() => setIsHistoryOpen(false)}>
+                Collapse
+              </button>
             </div>
-          )}
-        </aside>
+            {history.length === 0 ? (
+              <p className="muted">Your latest 10 saved or downloaded generations will appear here.</p>
+            ) : (
+              <div className="history-list">
+                {history.map((item) => {
+                  const template = templates.find((entry) => entry.id === item.templateId);
+                  return (
+                    <button type="button" key={item.id} className="history-item" onClick={() => void restoreHistory(item)}>
+                      {item.thumbnailDataUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={item.thumbnailDataUrl} alt="" />
+                      ) : (
+                        <span className="history-item__placeholder" />
+                      )}
+                      <span>
+                        <strong>{template?.name ?? "Unknown template"}</strong>
+                        {new Date(item.createdAt).toLocaleString("en-US")}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </aside>
+        ) : null}
+        <button type="button" className="history-fab" onClick={() => setIsHistoryOpen((current) => !current)}>
+          Recent History
+          <span>{history.length}</span>
+        </button>
       </div>
     </main>
   );

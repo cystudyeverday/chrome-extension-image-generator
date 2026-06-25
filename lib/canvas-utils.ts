@@ -23,20 +23,26 @@ export function drawWrappedText(
   lineHeight: number,
   maxLines: number
 ) {
-  const words = text.trim().split(/\s+/).filter(Boolean);
+  const sourceText = text.trim();
+  const fontSize = getCanvasFontSize(ctx);
+  const safeLineHeight = Math.max(lineHeight, fontSize * 1.16);
+  const words = tokenizeText(sourceText);
   const lines: string[] = [];
   let currentLine = "";
 
   for (const word of words) {
-    const nextLine = currentLine ? `${currentLine} ${word}` : word;
-    if (ctx.measureText(nextLine).width <= maxWidth || !currentLine) {
+    const separator = shouldInsertSpace(currentLine, word) ? " " : "";
+    const nextLine = currentLine ? `${currentLine}${separator}${word}` : word;
+    if (ctx.measureText(nextLine).width <= maxWidth) {
       currentLine = nextLine;
     } else {
-      lines.push(currentLine);
+      if (currentLine) {
+        lines.push(currentLine);
+      }
       currentLine = word;
     }
 
-    if (lines.length === maxLines) {
+    if (lines.length >= maxLines) {
       break;
     }
   }
@@ -45,10 +51,87 @@ export function drawWrappedText(
     lines.push(currentLine);
   }
 
+  const visibleText = lines.join("");
+  const shouldTruncate = sourceText.replace(/\s+/g, "").length > visibleText.replace(/\s+/g, "").length;
   lines.forEach((line, index) => {
-    const suffix = index === maxLines - 1 && words.join(" ").length > lines.join(" ").length ? "..." : "";
-    ctx.fillText(`${line}${suffix}`, x, y + index * lineHeight);
+    const suffix = index === maxLines - 1 && shouldTruncate ? "..." : "";
+    ctx.fillText(`${line}${suffix}`, x, y + index * safeLineHeight);
   });
+}
+
+export function drawFittedSingleLineText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  weight: number,
+  maxFontSize: number,
+  minFontSize: number,
+  family = "Inter, Arial, sans-serif"
+) {
+  const sourceText = text.trim();
+  if (!sourceText) {
+    return;
+  }
+
+  setFont(ctx, weight, maxFontSize, family);
+  const measuredWidth = ctx.measureText(sourceText).width;
+  if (measuredWidth <= maxWidth) {
+    ctx.fillText(sourceText, x, y);
+    return;
+  }
+
+  const readableFloor = Math.min(minFontSize, Math.max(6, maxFontSize * 0.38));
+  const fittedFontSize = Math.max(readableFloor, Math.floor(maxFontSize * (maxWidth / measuredWidth)));
+  setFont(ctx, weight, fittedFontSize, family);
+
+  const fittedWidth = ctx.measureText(sourceText).width;
+  if (fittedWidth <= maxWidth) {
+    ctx.fillText(sourceText, x, y);
+    return;
+  }
+
+  const horizontalScale = maxWidth / fittedWidth;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(horizontalScale, 1);
+  ctx.fillText(sourceText, 0, 0);
+  ctx.restore();
+}
+
+function getCanvasFontSize(ctx: CanvasRenderingContext2D) {
+  const match = /(\d+(?:\.\d+)?)px/.exec(ctx.font);
+  return match ? Number(match[1]) : 16;
+}
+
+function tokenizeText(text: string) {
+  const tokens: string[] = [];
+  const parts = text.split(/(\s+)/).filter(Boolean);
+
+  for (const part of parts) {
+    if (/^\s+$/.test(part)) {
+      continue;
+    }
+
+    if (/[\u3400-\u9fff]/.test(part)) {
+      tokens.push(...part.split(""));
+    } else if (part.length > 20) {
+      tokens.push(...part.split(""));
+    } else {
+      tokens.push(part);
+    }
+  }
+
+  return tokens;
+}
+
+function shouldInsertSpace(currentLine: string, word: string) {
+  if (!currentLine) {
+    return false;
+  }
+
+  return !/[\u3400-\u9fff]$/.test(currentLine) && !/^[\u3400-\u9fff]/.test(word);
 }
 
 export function drawImageInBox(

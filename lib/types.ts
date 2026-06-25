@@ -1,8 +1,8 @@
-export type TemplateCategory = "store" | "social" | "commerce" | "poster" | "ads";
+export type TemplateCategory = "store";
 
 export type ImageFitMode = "contain" | "cover" | "center";
 
-export type EditableField = "title" | "subtitle" | "badge" | "cta" | "price";
+export type EditableField = "title" | "subtitle" | "badge" | "cta";
 
 export type ExportSize = {
   id: string;
@@ -17,7 +17,6 @@ export type TemplateData = {
   subtitle: string;
   badge: string;
   cta: string;
-  price: string;
   themeColor: string;
   fitMode: ImageFitMode;
 };

@@ -1,476 +1,392 @@
-# 独立 Chrome Extension 图片模板生成器需求文档
+# Standalone Chrome Extension Image Template Generator PRD
 
-## 1. 项目背景
+## 1. Background
 
-本需求文档用于一个新的独立 Chrome Extension 项目，不在 `beatfear` / TreatBoss 项目内继续改造。原因是两个产品的用户目标、交互流程、商店定位和代码结构差异较大：TreatBoss 是情绪小游戏扩展，而新项目是图片模板生产力工具。为了避免后续上架、权限、UI、文案和代码维护混乱，应重新创建一个新仓库或新目录。
+This project is a standalone Chrome Extension image template generator. It should stay separate from `beatfear` / TreatBoss because the target users, workflows, store positioning, copy, and code structure are different.
 
-新项目目标不是做 Midjourney 式的 AI 生图，而是做“上传图片 + 选择模板 + 一次性生成多种尺寸 + 本地下载成品”的场景型生成器。它通过模板函数、Canvas/SVG 渲染和浏览器本地导出能力，为用户快速生成电商图、社媒封面、广告素材、Chrome Store 宣传图等可直接使用的视觉物料。
+The product is not an AI image generator. It is a local-first image composition tool: users upload an image, choose a template, edit copy once, generate several asset sizes, and download production-ready PNGs.
 
-`beatfear` 中已有的 Chrome Extension 面板、本地 SVG/Canvas 生成和 Chrome Store 素材经验只作为参考，不直接混入新产品代码。
+Existing Chrome Extension, local SVG/Canvas generation, and Chrome Web Store asset experience from `beatfear` may be used as reference only. TreatBoss business logic, branding, copy, icons, and game UI should not be reused.
 
-## 2. 产品定位
+## 2. Product Positioning
 
-产品名称暂定：TemplatePic / QuickPromo / ImageForge Extension。
+Working names: TemplatePic, QuickPromo, or ImageForge Extension.
 
-建议项目目录名：
+One-line positioning:
 
-```text
-image-batch-template-extension
-```
+> A browser-based local image template generator that turns one uploaded image and a few copy fields into multiple promotional assets.
 
-一句话定位：
+Core value:
 
-> 一个在浏览器里运行的本地图片模板生成器，用户上传图片、选择模板、填写文案后，即可一次性生成多种尺寸的宣传图、封面图或商品图。
+- No AI API is required, so generation is fast and low cost.
+- Images are processed locally for better privacy.
+- Templates replace complex design workflows for non-design users.
+- Future AI background removal, background replacement, copy generation, and advanced editing can be layered on top.
 
-核心价值：
+## 3. Target Users
 
-- 不需要调用 AI API，生成速度快、成本低。
-- 图片处理尽量在本地完成，隐私友好。
-- 用模板替代复杂设计流程，让非设计用户一次编辑即可得到多个平台可用的成品。
-- 后续可以把 AI 抠图、AI 换背景、AI 文案等能力作为高级功能叠加。
+Primary users for the first version:
 
-## 3. 目标用户
+- Indie developers who need Chrome Web Store, Product Hunt, and social launch assets.
+- Content creators who need fast social thumbnails and covers.
+- Small merchants who need product or promotion images.
+- Marketers who need batches of ad test creatives.
 
-### 3.1 第一阶段目标用户
+Out of scope for the first version:
 
-- 独立开发者：需要快速生成 Chrome Web Store、Product Hunt、社媒宣传图。
-- 内容创作者：需要快速生成小红书、TikTok、YouTube、公众号封面。
-- 小商家/电商卖家：需要生成商品促销图、主图、活动图。
-- 营销运营人员：需要批量生成广告测试素材。
+- Users who need professional AI retouching, face swap, outfit swap, or scene blending.
+- Enterprise design teams with strict print or brand-system requirements.
+- Teams that need collaboration, approvals, or asset management.
 
-### 3.2 不优先服务的用户
+## 4. Use Cases
 
-- 需要专业级 AI 重绘、换装、换脸、场景融合的用户。
-- 对印刷级排版、品牌 VI 系统有强约束的企业设计团队。
-- 需要多人协作、审批流、素材资产管理的中大型组织。
+### 4.1 Chrome Web Store Promotional Images
 
-## 4. 使用场景
+Users upload an extension screenshot, choose a Chrome Store template, enter a title, subtitle, and key benefit, then export 1280x800, 1400x560, and 440x280 assets.
 
-### 4.1 Chrome Store 宣传图
+### 4.2 Social Covers
 
-用户上传产品截图，选择 Chrome Store 模板，输入标题、副标题和卖点，一次生成 1280x800、1400x560、440x280 等宣传图。
+Users upload an image, enter a title and supporting copy, choose a cover style, and export common social ratios such as 3:4, 1:1, and 16:9.
 
-### 4.2 小红书/社媒封面
+### 4.3 Product Promotion Images
 
-用户上传图片，输入标题和标签，选择封面风格，一次生成 3:4、1:1、16:9 等尺寸封面。
+Users upload a product image, choose a promotion template, enter pricing, discount, and benefit copy, then export listing, detail, and ad images.
 
-### 4.3 商品促销图
+### 4.4 Ad Creatives
 
-用户上传商品图，选择促销模板，填写价格、折扣、卖点，一次生成商品主图、详情页图、广告图等多个比例版本。
+Users upload a product screenshot or product image, choose an ad template, enter CTA and campaign copy, then generate sizes for different ad platforms.
 
-### 4.4 广告素材
+## 5. MVP Scope
 
-用户上传产品截图或商品图，选择广告模板，填写 CTA、活动文案，批量生成不同平台尺寸的素材。
+The first version focuses on local template composition. It does not call any AI generation API.
 
-## 5. MVP 范围
+Must have:
 
-第一版只做本地模板合成，不接任何 AI 生成 API。
+- Upload PNG, JPG, or WebP images.
+- Preview the uploaded image and generated assets.
+- Provide built-in templates.
+- Edit title, subtitle, badge, CTA, theme color, and image fit mode.
+- Select multiple export sizes.
+- Render locally with Canvas or SVG.
+- Preview multiple sizes from the same content.
+- Download one PNG or all selected PNGs.
+- Save and restore the latest 10 generation records.
+- Open from a Chrome Extension action.
 
-### 5.1 必须实现
+Not included in MVP:
 
-- 上传图片：支持 PNG、JPG、WebP。
-- 图片预览：上传后在编辑区展示原图和生成预览。
-- 模板选择：内置 5 个模板。
-- 文案输入：支持标题、副标题、标签/角标、CTA 文案。
-- 多尺寸选择：至少支持 1:1、4:5、16:9、Chrome Store 1280x800，并允许多选。
-- 本地生成：使用 Canvas 或 SVG 在浏览器内完成合成。
-- 批量预览：同一套内容展示多个尺寸的生成结果。
-- 批量下载导出：支持单张下载，也支持一次下载全部 PNG。
-- 历史记录：保存最近 10 个生成配置和结果缩略图。
-- 扩展入口：通过 Chrome extension action 打开面板。
+- AI image generation.
+- AI background removal.
+- Account system.
+- Subscription or billing.
+- Cloud asset library.
+- Collaboration.
+- Template marketplace.
+- Batch upload of multiple source images.
 
-### 5.2 暂不实现
-
-- AI 生图。
-- AI 抠图。
-- 服务端账号系统。
-- 订阅付费。
-- 云端素材库。
-- 多人协作。
-- 在线模板市场。
-- 批量上传多张图片。
-
-## 6. 核心用户流程
+## 6. Core Flow
 
 ```text
-打开 Chrome Extension
-  ↓
-进入图片生成器面板
-  ↓
-上传图片
-  ↓
-选择模板
-  ↓
-输入标题 / 副标题 / 标签 / CTA
-  ↓
-选择多个导出尺寸
-  ↓
-实时预览多尺寸结果
-  ↓
-点击生成 / 下载单张或全部 PNG
-  ↓
-保存到历史记录
+Open Chrome Extension
+  ->
+Open image generator panel
+  ->
+Upload image
+  ->
+Choose template
+  ->
+Edit title / subtitle / badge / CTA
+  ->
+Select export sizes
+  ->
+Preview selected sizes
+  ->
+Download one or all PNGs
+  ->
+Save to history
 ```
 
-## 7. 功能需求
+## 7. Functional Requirements
 
-### 7.1 上传模块
+### 7.1 Upload
 
-功能说明：
+- Users can click the upload area to choose a local image.
+- Users can drag and drop an image.
+- MVP should limit a single image to 10 MB.
+- Images must stay local and must not be uploaded to a server.
 
-- 用户可以点击上传区域选择本地图片。
-- 支持拖拽上传。
-- 限制单张图片大小，建议 MVP 限制为 10 MB。
-- 上传后生成本地对象 URL 或 ImageBitmap，不上传到服务器。
+Acceptance criteria:
 
-验收标准：
+- PNG, JPG, and WebP uploads preview correctly.
+- Non-image files show an error.
+- Oversized files ask the user to compress or choose another image.
 
-- 上传 PNG、JPG、WebP 后能正确预览。
-- 上传非图片文件时提示错误。
-- 上传超大图片时提示用户压缩或更换图片。
+### 7.2 Templates
 
-### 7.2 模板模块
+Templates should be functions or configuration objects, not hardcoded UI branches.
 
-模板应该以函数或配置形式存在，避免写死在 UI 中。
+Recommended template shape:
 
-建议结构：
-
-```js
-export const templates = [
-  {
-    id: 'chrome-store-hero',
-    name: 'Chrome Store Hero',
-    category: 'store',
-    sizes: [
-      { id: 'store-large', label: 'Chrome Store Large', width: 1280, height: 800 },
-      { id: 'store-marquee', label: 'Chrome Store Marquee', width: 1400, height: 560 },
-      { id: 'store-small', label: 'Chrome Store Small', width: 440, height: 280 },
-    ],
-    fields: ['title', 'subtitle', 'badge'],
-    render(ctx, image, data, size) {
-      // Canvas rendering logic
-    },
-  },
-];
+```ts
+type Template = {
+  id: string;
+  name: string;
+  description: string;
+  fields: string[];
+  sizes: ExportSize[];
+  render: (args: TemplateRenderArgs) => void;
+};
 ```
 
-MVP 内置模板建议：
+Acceptance criteria:
 
-- Chrome Store Hero：适合扩展宣传图。
-- 小红书封面：大标题 + 图片 + 标签。
-- 商品促销图：商品图 + 价格/折扣/卖点。
-- 极简海报：大留白 + 主图 + 标题。
-- 渐变广告图：渐变背景 + 截图/商品 + CTA。
+- Switching templates updates previews immediately.
+- Each template defines editable fields and supported export sizes.
+- A template render failure does not crash the entire page.
 
-验收标准：
+### 7.3 Copy Editing
 
-- 切换模板后预览即时刷新。
-- 每个模板都有一组明确的可导出尺寸和可编辑字段。
-- 模板渲染失败时不影响整个页面运行。
+Editable fields:
 
-### 7.3 编辑模块
+- Title.
+- Subtitle.
+- Badge.
+- CTA or feature point.
+- Theme color.
+- Image fit mode: center, fill, contain, or crop.
 
-用户可编辑字段：
+Acceptance criteria:
 
-- 标题。
-- 副标题。
-- 标签/角标。
-- CTA 文案。
-- 背景色或主题色。
-- 图片位置模式：居中、铺满、适配、裁剪。
+- Preview updates as the user types.
+- Long copy wraps, truncates, or scales without overflowing the canvas.
+- Empty fields do not cause render errors.
 
-验收标准：
+### 7.4 Preview
 
-- 输入文案后预览实时更新。
-- 长文案需要自动换行或缩小字号。
-- 空字段不能导致渲染报错。
+- The main preview area displays selected output sizes.
+- Each preview card shows size name, width, height, and use case.
+- The preview aspect ratio matches the export size.
+- Preview rendering may use a lower scale than final export.
 
-### 7.4 预览模块
+Acceptance criteria:
 
-功能说明：
+- Template, copy, selected sizes, and image changes refresh previews.
+- Preview and final export have the same visual layout.
 
-- 页面右侧或主区域展示多尺寸生成预览。
-- 每个预览卡片标注尺寸名称、宽高和用途。
-- 预览比例要和对应导出尺寸一致。
-- 支持重新渲染。
+### 7.5 Multi-size Generation
 
-验收标准：
+- Users can select one or more output sizes.
+- One image, copy set, and theme color should adapt across canvas ratios.
+- Template functions should adjust layout per size instead of stretching one design.
+- MVP can use a single image crop strategy for all sizes.
 
-- 模板、文案、尺寸选择、图片变化后，所有选中尺寸预览能同步刷新。
-- 每个尺寸的预览和导出结果视觉一致。
+Acceptance criteria:
 
-### 7.5 多尺寸生成模块
+- A single action can generate at least three sizes.
+- Different sizes use basic layout adaptation.
+- Long titles do not overflow the canvas.
+- Unselected sizes are not rendered or downloaded.
 
-功能说明：
+### 7.6 Export
 
-- 用户可以勾选多个目标尺寸。
-- 同一套图片、文案、主题色自动适配到不同画布比例。
-- 模板函数需要针对不同尺寸调整布局，而不是简单拉伸。
-- 支持为不同尺寸单独微调图片裁剪位置，MVP 可先使用统一裁剪策略。
+- Use `canvas.toBlob()` to generate PNG files.
+- Download through browser download links or `chrome.downloads.download()` if needed.
+- Default filenames should include template name, size, and timestamp.
+- Support downloading one size and all selected sizes.
+- MVP can trigger multiple PNG downloads individually; ZIP export can come later.
 
-首批尺寸建议：
+Acceptance criteria:
 
-- Chrome Store：1280x800、1400x560、440x280。
-- 社媒通用：1080x1080、1080x1350、1920x1080。
-- 小红书：1242x1660、1080x1440。
-- 广告素材：1200x628、1080x1920、300x250。
+- Downloaded files are valid PNGs.
+- Exported image dimensions match the selected size.
+- Download-all filenames include size identifiers.
+- Exports are not blocked by cross-origin canvas tainting.
 
-验收标准：
+### 7.7 History
 
-- 一次点击可以生成至少 3 个尺寸。
-- 不同尺寸不是简单等比缩放，而是有基础布局适配。
-- 长标题在不同尺寸下都不会溢出画布。
-- 未勾选的尺寸不参与渲染和导出。
+- Save the latest 10 generation records.
+- Store template ID, copy fields, selected sizes, source image if possible, and thumbnail.
+- Use `chrome.storage.local` or `localStorage`.
 
-### 7.6 导出模块
+Acceptance criteria:
 
-功能说明：
+- History persists after closing and reopening the extension.
+- Clicking a history item restores the editing configuration.
+- More than 10 records automatically removes the oldest entries.
 
-- 使用 `canvas.toBlob()` 生成 PNG。
-- 使用 `chrome.downloads.download()` 或浏览器下载链接保存文件。
-- 默认文件名包含模板名和时间戳。
-- 支持“下载当前尺寸”和“下载全部尺寸”。
-- 下载全部时，MVP 可以逐个触发下载；后续可升级为 ZIP 打包。
+## 8. Non-functional Requirements
 
-验收标准：
+Performance:
 
-- 点击下载后生成 PNG 文件。
-- 导出图片尺寸与所选尺寸设置一致。
-- 下载全部时，每个文件名包含尺寸标识。
-- 导出文件没有跨域污染问题。
+- Typical generation should complete within 1 second.
+- Large image rendering should avoid blocking the UI.
+- Preview can render at low resolution; export should render at full size.
 
-### 7.7 历史记录模块
+Privacy:
 
-功能说明：
+- MVP must not upload user images.
+- MVP must not collect user copy.
+- Privacy copy should clearly state that images are processed locally.
 
-- 保存最近 10 次生成记录。
-- 记录包括模板 ID、输入字段、选中尺寸、缩略图。
-- 使用 `chrome.storage.local` 或 localStorage。
+Compatibility:
 
-验收标准：
+- Support Chrome Manifest V3.
+- Prioritize desktop Chrome.
+- Mobile browser support is not required.
 
-- 关闭扩展后再次打开仍能看到历史记录。
-- 点击历史记录可以恢复编辑配置。
-- 超过 10 条时自动删除最旧记录。
+Security:
 
-## 8. 非功能需求
+- Do not execute user-provided HTML.
+- Render user copy through Canvas text APIs.
+- Keep extension permissions minimal.
 
-### 8.1 性能
+## 9. Technical Approach
 
-- 普通图片生成应在 1 秒内完成。
-- 大图渲染应避免阻塞 UI，必要时使用 debounce。
-- 预览渲染可以使用低分辨率，下载时再用原尺寸渲染。
-
-### 8.2 隐私
-
-- MVP 不上传用户图片。
-- 不收集用户输入文案。
-- 隐私说明中明确“图片在本地处理”。
-
-### 8.3 兼容性
-
-- 支持 Chrome Manifest V3。
-- 优先支持桌面 Chrome。
-- 不要求支持移动端浏览器。
-
-### 8.4 安全
-
-- 不执行用户输入的 HTML。
-- 所有文案用 Canvas 文本 API 渲染，避免 XSS。
-- 扩展权限保持最小化。
-
-## 9. 技术方案
-
-### 9.1 新项目结构
+Recommended project structure:
 
 ```text
 image-batch-template-extension/
   manifest.json
-  background.js
   index.html
   src/
     app.js
     image-loader.js
     templates.js
     renderer.js
-    layout.js
     download.js
     storage.js
-    state.js
   styles/
     main.css
-  assets/
-    icons/
   docs/
     prd.md
 ```
 
-MVP 建议先做扩展弹窗或扩展页面，不急着做注入网页的浮层。图片模板生成器属于独立工具型界面，直接从扩展 action 打开页面即可；后续如果需要在任意网页截图上快速生成，再增加 content script 和页面浮层。
+MVP should start as an extension popup or extension page. There is no need for a content script overlay until the product needs one-click generation from arbitrary web pages.
 
-### 9.2 数据流
+Data flow:
 
 ```text
 File input
-  ↓
-image-loader 读取 ImageBitmap
-state 保存 image / template / fields / selectedSizes
-  ↓
-renderer 按尺寸循环调用 template.render()
-  ↓
-Canvas 多尺寸预览
-  ↓
-download 导出单张或多张 PNG
-  ↓
-storage 保存历史记录
+  ->
+image-loader creates an image object
+  ->
+state stores image / template / fields / selectedSizes
+  ->
+renderer calls template.render() per size
+  ->
+Canvas previews selected sizes
+  ->
+download exports one or more PNGs
+  ->
+storage saves history
 ```
 
-### 9.3 与 `beatfear` 的关系
+API needs:
 
-本项目应独立开发，不直接复用 TreatBoss 的游戏代码、文案、样式和 manifest。可以参考的只有实现思路：
+- MVP does not need an API.
+- Future AI features may require a server API, browser-side model, cost controls, and a paid plan.
 
-- Chrome Extension Manifest V3 的配置方式。
-- 本地页面作为扩展 UI 的组织方式。
-- “参数配置 -> 纯函数渲染 -> 页面展示”的实现模式。
-- Canvas/SVG 本地生成视觉内容的方式。
-- Chrome Store 宣传图尺寸和素材准备经验。
-
-不建议复用：
-
-- TreatBoss 的角色、战斗、统计、排行榜、情绪桶等业务代码。
-- TreatBoss 的品牌文案、图标、Chrome Store listing。
-- TreatBoss 的扩展浮层交互，除非后续明确需要网页内悬浮入口。
-
-### 9.4 是否需要 API
-
-MVP 不需要 API。
-
-未来如果加入以下功能，需要 API 或浏览器端模型：
-
-- AI 抠图。
-- AI 换背景。
-- AI 扩图。
-- AI 局部重绘。
-- AI 生成商品场景。
-- AI 文案生成。
-
-建议升级路线：
+Suggested product path:
 
 ```text
-V1：纯模板合成
-V2：浏览器端轻量抠图 / 背景移除
-V3：接第三方 AI API，作为付费高级功能
-V4：模板市场 / 批量生成 / 账号同步
+V1: Pure template composition
+V2: Lightweight browser-side background removal
+V3: Third-party AI API as a paid feature
+V4: Template marketplace, batch generation, account sync
 ```
 
-## 10. 商业模式预留
+## 10. Business Model Ideas
 
-MVP 可以免费发布，验证需求和模板方向。
+MVP can launch free to validate demand and template direction.
 
-后续付费点：
+Potential paid features:
 
-- 高级模板包。
-- 高清导出。
-- 批量生成。
-- 去水印。
-- AI 抠图/换背景。
-- 商业授权素材包。
-- Chrome Store / 小红书 / 电商专项模板合集。
+- Premium template packs.
+- High-resolution export.
+- Batch generation.
+- Watermark removal.
+- AI background removal or replacement.
+- Commercial asset packs.
+- Channel-specific template bundles for Chrome Store, social, and ecommerce.
 
-推荐早期定价：
+Early pricing options:
 
-- 免费版：基础模板 + 每日有限导出。
-- Pro 一次性买断：更多模板 + 高清导出。
-- Pro 订阅：AI 功能、批量生成、持续模板更新。
+- Free: basic templates plus limited daily exports.
+- Pro one-time purchase: more templates and HD export.
+- Pro subscription: AI features, batch generation, and ongoing template updates.
 
-## 11. MVP 里程碑
+## 11. MVP Milestones
 
-### Milestone 1：基础生成链路
+Milestone 1: Core generation flow.
 
-- 完成图片上传。
-- 完成 1 个模板。
-- 完成 Canvas 预览。
-- 完成 3 个尺寸的 Canvas 预览。
-- 完成单张 PNG 下载。
+- Finish image upload.
+- Implement one template.
+- Render Canvas previews.
+- Preview three Chrome Store sizes.
+- Download one PNG.
 
-### Milestone 2：模板系统
+Milestone 2: Template system.
 
-- 抽象模板配置。
-- 增加 5 个模板。
-- 支持文案字段编辑。
-- 支持多尺寸选择和批量预览。
+- Abstract template configuration.
+- Add multiple templates.
+- Support editable copy fields.
+- Support selected sizes and batch preview.
 
-### Milestone 3：批量导出体验
+Milestone 3: Export experience.
 
-- 支持下载当前尺寸。
-- 支持下载全部选中尺寸。
-- 支持文件名按模板和尺寸自动命名。
-- 优化多尺寸生成性能。
+- Download current size.
+- Download all selected sizes.
+- Name files by template and size.
+- Improve multi-size rendering performance.
 
-### Milestone 4：扩展体验
+Milestone 4: Extension experience.
 
-- 接入 Chrome extension 面板。
-- 支持历史记录。
-- 优化空状态、错误提示和加载状态。
+- Connect the Chrome Extension panel.
+- Add history.
+- Improve empty states, errors, and loading states.
 
-### Milestone 5：上架准备
+Milestone 5: Store readiness.
 
-- 准备 Chrome Store 图标、宣传图、描述文案。
-- 编写隐私说明。
-- 打包 extension。
-- 本地安装测试。
+- Prepare Chrome Store icons, promotional images, and listing copy.
+- Write the privacy explanation.
+- Package the extension.
+- Test local installation.
 
-## 12. 验收清单
+## 12. Acceptance Checklist
 
-- 用户能从扩展入口打开生成器。
-- 用户能上传一张图片。
-- 用户能选择至少 5 个模板。
-- 用户能编辑标题、副标题、标签或 CTA。
-- 用户能一次选择多个导出尺寸。
-- 用户能看到多尺寸实时预览。
-- 用户能单独导出某个尺寸的 PNG。
-- 用户能一次导出全部选中尺寸的 PNG。
-- 每张导出图片尺寸正确。
-- 历史记录能保存和恢复。
-- 整个过程不依赖外部 API。
-- 扩展权限没有超过实际需要。
+- Users can open the generator from the extension action.
+- Users can upload one image.
+- Users can choose from multiple templates.
+- Users can edit title, subtitle, badge, and CTA or feature copy.
+- Users can select multiple export sizes.
+- Users can see live multi-size previews.
+- Users can export a single PNG.
+- Users can export all selected PNGs.
+- Each exported image has the correct dimensions.
+- History can save and restore records.
+- The flow does not depend on external APIs.
+- Extension permissions stay minimal.
 
-## 13. 主要风险
+## 13. Key Risks
 
-- 模板质量不够高，用户觉得像“拼图工具”而不是专业设计工具。
-- 纯本地合成不能解决抠图、真实场景融合等高级需求。
-- 长文案和不同图片比例会导致多尺寸模板适配复杂。
-- Chrome extension 上架时需要清楚说明隐私和用途。
-- 如果后续加入 AI API，需要重新设计成本控制和付费系统。
+- Template quality may feel too generic if visual polish is low.
+- Local-only composition cannot solve advanced cutout or scene-blending needs.
+- Long copy and varied image ratios make multi-size layout adaptation harder.
+- Chrome Web Store review requires clear privacy and purpose messaging.
+- Future AI API features require new cost controls and monetization design.
 
-## 14. 下一步建议
+## 14. Recommended Next Step
 
-先做一个极窄 MVP：Chrome Store 多尺寸宣传图生成器。
+Build the narrowest MVP first: a Chrome Store multi-size promotional image generator.
 
-原因：
-
-- 目标用户明确：独立开发者和扩展作者。
-- 输出尺寸明确，多尺寸批量生成的价值非常直接。
-- 不需要复杂 AI 能力。
-- 生成结果可以直接用于商店上架和推广。
-
-建议第一个版本只实现：
+The first version should support:
 
 ```text
-上传截图
-选择 Chrome Store 模板
-输入标题和副标题
-一次生成 1280x800 / 1400x560 / 440x280
-单张下载或全部下载 PNG
+Upload screenshot
+Choose Chrome Store template
+Enter title and subtitle
+Generate 1280x800 / 1400x560 / 440x280
+Download one PNG or all PNGs
 ```
 
-确认这个链路跑通后，再扩展到小红书封面、商品图和广告素材。
-
-建议执行顺序：
-
-```text
-1. 在 /Users/chelsea/prjs/ 下新建 image-batch-template-extension/
-2. 复制本 PRD 到新项目 docs/prd.md
-3. 初始化最小 Chrome Extension Manifest V3
-4. 先实现单模板三尺寸预览和下载
-5. 再补模板系统、历史记录和更多尺寸
-```
+After this flow works well, expand into social covers, product images, and ad creatives.

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TemplatePic",
-  "description": "Local image template generator for Chrome Store, social, commerce, and ad assets.",
+  "description": "Local Chrome Web Store promotional image generator.",
   "version": "0.1.0",
   "action": {
     "default_title": "TemplatePic",

@@ -1,13 +1,13 @@
 # TemplatePic
 
-A local-first image template generator built with React, Next.js App Router, and TypeScript.
+A local-first Chrome Web Store image template generator built with React, Next.js App Router, and TypeScript.
 
 ## Features
 
 - Upload PNG, JPG, or WebP images locally.
-- Choose from 5 built-in templates.
-- Edit title, subtitle, badge, CTA, price, theme color, and image fit mode.
-- Preview multiple output sizes with Canvas.
+- Choose from 8 Chrome Store promotional templates.
+- Edit title, subtitle, badge, feature point, theme color, and image fit mode.
+- Preview Chrome Store Large, Marquee, and Small sizes with Canvas.
 - Download single PNGs or all selected sizes.
 - Save and restore the latest 10 generation records from localStorage.
 - Static export friendly for a Chrome Extension popup.
