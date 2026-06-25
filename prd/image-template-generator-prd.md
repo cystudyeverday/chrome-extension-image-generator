@@ -97,11 +97,11 @@ Choose template
   ->
 Edit title / subtitle / badge / CTA
   ->
-Select export sizes
+Select preview cards in Live Preview
   ->
-Preview selected sizes
+Preview all fixed Chrome sizes
   ->
-Download one or all PNGs
+Download one preview or selected previews
   ->
 Save to history
 ```
@@ -128,21 +128,87 @@ Templates should be functions or configuration objects, not hardcoded UI branche
 Recommended template shape:
 
 ```ts
+type TemplateField =
+  | {
+      id: "title" | "subtitle" | "badge" | "cta" | "feature";
+      label: string;
+      type: "text";
+      maxLength: number;
+      placeholder: string;
+    }
+  | {
+      id: "themeColor";
+      label: string;
+      type: "color";
+      defaultValue: string;
+    }
+  | {
+      id: "imageFit";
+      label: string;
+      type: "select";
+      options: Array<"center" | "fill" | "contain" | "crop">;
+      defaultValue: "contain" | "crop";
+    };
+
 type Template = {
   id: string;
   name: string;
+  category: "chrome-store" | "social" | "product" | "ads";
   description: string;
-  fields: string[];
+  fields: TemplateField[];
   sizes: ExportSize[];
+  defaultValues: Record<string, string>;
+  previewImage?: string;
   render: (args: TemplateRenderArgs) => void;
 };
 ```
+
+MVP template catalog:
+
+| Template | Category | Main use | Required fields | Default sizes |
+| --- | --- | --- | --- | --- |
+| Chrome Hero | Chrome Store | Extension hero screenshot with large title and benefit text | title, subtitle, badge, themeColor, imageFit | 1280x800, 1400x560, 440x280 |
+| Feature Spotlight | Chrome Store | Emphasize one core extension feature beside a screenshot | title, feature, cta, themeColor, imageFit | 1280x800, 1400x560, 440x280 |
+| Browser Frame | Chrome Store | Show the uploaded screenshot inside a browser-like frame | title, subtitle, themeColor, imageFit | 1280x800, 1400x560, 440x280 |
+| Dark Tech | Chrome Store | High-contrast technical style for developer and productivity extensions | title, subtitle, badge, themeColor, imageFit | 1280x800, 1400x560, 440x280 |
+| Minimal White | Chrome Store | Clean light style for professional extension listings | title, subtitle, themeColor, imageFit | 1280x800, 1400x560, 440x280 |
+
+MVP export sizes are fixed to Chrome publishing assets:
+
+- 1280x800 Chrome Store large promotional image.
+- 1400x560 Chrome Store marquee promotional image.
+- 440x280 Chrome Store small promotional image.
+- Social, product, and ad platform sizes are future extensions, not MVP defaults.
+
+Template rendering rules:
+
+- Each template should use named layout regions such as background, image frame, copy block, badge, CTA, and decorative elements.
+- Layout should be recalculated per export size. Do not render one fixed canvas and stretch it to another ratio.
+- Text should have max width, line height, max lines, and fallback scaling rules.
+- User images should be clipped inside a defined image frame with predictable fit behavior.
+- Template colors should derive from `themeColor` plus generated tints and shadows instead of unrelated hardcoded palettes.
+- `themeColor` is a global setting that applies to every template and should not reset when switching templates.
+- Templates may change layout and typography, but they should not ship with independent default brand colors.
+- Decorative shapes must not overlap critical copy or the primary image.
+- Every template should provide sensible default copy so the first preview never looks empty.
+
+Visual quality baseline:
+
+- Use strong contrast between text and background.
+- Keep title text readable at the smallest supported size.
+- Prefer one clear visual hierarchy: badge, title, supporting copy, CTA.
+- Keep safe padding around edges so assets are usable in stores and social feeds.
+- Avoid tiny decorative details that disappear in 440x280 exports.
+- The uploaded image should feel intentionally placed, not pasted on top of the background.
 
 Acceptance criteria:
 
 - Switching templates updates previews immediately.
 - Each template defines editable fields and supported export sizes.
 - A template render failure does not crash the entire page.
+- Each MVP template renders correctly across all of its default sizes.
+- Each template has default values, so users can preview it before editing copy.
+- Template-specific fields are shown only when the selected template uses them.
 
 ### 7.3 Copy Editing
 
@@ -170,29 +236,33 @@ Acceptance criteria:
 
 Acceptance criteria:
 
-- Template, copy, selected sizes, and image changes refresh previews.
+- Template, copy, preview-card selection, and image changes refresh previews.
 - Preview and final export have the same visual layout.
 
 ### 7.5 Multi-size Generation
 
-- Users can select one or more output sizes.
+- MVP uses fixed Chrome publishing sizes: 1280x800, 1400x560, and 440x280.
+- Users can select one or more fixed Chrome output sizes directly from the Live Preview cards.
+- The left control panel should not contain a separate export-size selector.
 - One image, copy set, and theme color should adapt across canvas ratios.
 - Template functions should adjust layout per size instead of stretching one design.
 - MVP can use a single image crop strategy for all sizes.
+- Non-Chrome sizes such as social covers, product images, and ad creatives are not included in the MVP export set.
 
 Acceptance criteria:
 
-- A single action can generate at least three sizes.
+- A single action can generate the three fixed Chrome publishing sizes.
+- All fixed Chrome sizes remain visible in Live Preview even when only some are selected for batch download.
 - Different sizes use basic layout adaptation.
 - Long titles do not overflow the canvas.
-- Unselected sizes are not rendered or downloaded.
+- Unselected preview cards are still rendered, but they are not included in selected batch downloads.
 
 ### 7.6 Export
 
 - Use `canvas.toBlob()` to generate PNG files.
 - Download through browser download links or `chrome.downloads.download()` if needed.
 - Default filenames should include template name, size, and timestamp.
-- Support downloading one size and all selected sizes.
+- Support downloading one preview card and all selected preview cards.
 - MVP can trigger multiple PNG downloads individually; ZIP export can come later.
 
 Acceptance criteria:
@@ -205,7 +275,7 @@ Acceptance criteria:
 ### 7.7 History
 
 - Save the latest 10 generation records.
-- Store template ID, copy fields, selected sizes, source image if possible, and thumbnail.
+- Store template ID, copy fields, selected preview card sizes, source image if possible, and thumbnail.
 - Use `chrome.storage.local` or `localStorage`.
 
 Acceptance criteria:
@@ -274,7 +344,7 @@ state stores image / template / fields / selectedSizes
   ->
 renderer calls template.render() per size
   ->
-Canvas previews selected sizes
+Canvas previews all fixed Chrome sizes
   ->
 download exports one or more PNGs
   ->
@@ -330,12 +400,12 @@ Milestone 2: Template system.
 - Abstract template configuration.
 - Add multiple templates.
 - Support editable copy fields.
-- Support selected sizes and batch preview.
+- Support Live Preview card selection and batch preview.
 
 Milestone 3: Export experience.
 
 - Download current size.
-- Download all selected sizes.
+- Download all selected preview cards.
 - Name files by template and size.
 - Improve multi-size rendering performance.
 
@@ -358,8 +428,12 @@ Milestone 5: Store readiness.
 - Users can upload one image.
 - Users can choose from multiple templates.
 - Users can edit title, subtitle, badge, and CTA or feature copy.
-- Users can select multiple export sizes.
+- Users can select multiple preview cards from Live Preview.
 - Users can see live multi-size previews.
+- Each MVP template has default copy, default theme color, and a preview thumbnail.
+- Each MVP template adapts layout for its supported aspect ratios.
+- Text remains readable in the smallest supported export size.
+- Template field controls change based on the selected template.
 - Users can export a single PNG.
 - Users can export all selected PNGs.
 - Each exported image has the correct dimensions.
@@ -367,15 +441,30 @@ Milestone 5: Store readiness.
 - The flow does not depend on external APIs.
 - Extension permissions stay minimal.
 
-## 13. Key Risks
+## 13. Template QA Checklist
+
+Before a template is considered production-ready:
+
+- Test with a landscape screenshot, portrait image, square image, and transparent PNG.
+- Test with empty copy, short copy, and maximum-length copy.
+- Test all supported export sizes from the same template state.
+- Confirm title, subtitle, badge, CTA, and uploaded image do not overlap.
+- Confirm text contrast is readable on both light and dark theme colors.
+- Confirm exported PNG dimensions match the selected export size exactly.
+- Confirm the template still looks acceptable when previewed at small card size.
+- Confirm history restore reproduces the same template, fields, sizes, and image fit mode.
+
+## 14. Key Risks
 
 - Template quality may feel too generic if visual polish is low.
 - Local-only composition cannot solve advanced cutout or scene-blending needs.
 - Long copy and varied image ratios make multi-size layout adaptation harder.
+- The template system can become difficult to extend if each template introduces unique field logic.
+- Poor text fitting rules can make generated assets look broken for real user copy.
 - Chrome Web Store review requires clear privacy and purpose messaging.
 - Future AI API features require new cost controls and monetization design.
 
-## 14. Recommended Next Step
+## 15. Recommended Next Step
 
 Build the narrowest MVP first: a Chrome Store multi-size promotional image generator.
 

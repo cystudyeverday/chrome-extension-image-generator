@@ -9,6 +9,16 @@ export const exportSizes: ExportSize[] = [
 
 const chromeStoreSizes = exportSizes;
 
+const defaultData = {
+  title: "Launch faster with Chrome tools",
+  subtitle: "Turn one screenshot into polished promotional assets.",
+  badge: "CHROME STORE READY",
+  cta: "Private by design",
+  feature: "One upload, every asset size",
+  themeColor: "#2563eb",
+  fitMode: "crop" as const
+};
+
 function drawGradientBase(ctx: CanvasRenderingContext2D, width: number, height: number, color: string) {
   const gradient = ctx.createLinearGradient(0, 0, width, height);
   gradient.addColorStop(0, shade(color, 42));
@@ -18,21 +28,57 @@ function drawGradientBase(ctx: CanvasRenderingContext2D, width: number, height: 
   ctx.fillRect(0, 0, width, height);
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function getImageRatio(image: HTMLImageElement) {
+  const width = image.naturalWidth || image.width;
+  const height = image.naturalHeight || image.height;
+
+  if (width <= 0 || height <= 0) {
+    return 16 / 10;
+  }
+
+  return width / height;
+}
+
+function getAdaptiveCardBounds(image: HTMLImageElement, x: number, y: number, width: number, height: number) {
+  const slotRatio = width / height;
+  const imageRatio = getImageRatio(image);
+  const maskRatio = clamp(imageRatio, slotRatio * 0.72, slotRatio * 1.45);
+  const isWiderThanSlot = maskRatio > slotRatio;
+  const cardWidth = isWiderThanSlot ? width : height * maskRatio;
+  const cardHeight = isWiderThanSlot ? width / maskRatio : height;
+
+  return {
+    x: x + (width - cardWidth) / 2,
+    y: y + (height - cardHeight) / 2,
+    width: cardWidth,
+    height: cardHeight
+  };
+}
+
 function drawImageCard(args: TemplateRenderArgs, x: number, y: number, width: number, height: number, radius: number) {
   const { ctx, image, data } = args;
+  const card = getAdaptiveCardBounds(image, x, y, width, height);
+  const inset = Math.max(6, Math.min(10, Math.min(card.width, card.height) * 0.025));
+  const innerRadius = Math.max(8, Math.min(radius - inset * 0.8, Math.min(card.width, card.height) * 0.08));
+  const outerRadius = Math.min(radius, Math.min(card.width, card.height) * 0.16);
+
   ctx.save();
   ctx.shadowColor = "rgba(15, 23, 42, 0.22)";
-  ctx.shadowBlur = Math.max(18, width * 0.035);
-  ctx.shadowOffsetY = Math.max(12, height * 0.045);
+  ctx.shadowBlur = Math.max(18, card.width * 0.035);
+  ctx.shadowOffsetY = Math.max(12, card.height * 0.045);
   ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
-  fillRoundedRect(ctx, x, y, width, height, radius);
+  fillRoundedRect(ctx, card.x, card.y, card.width, card.height, outerRadius);
   ctx.restore();
 
   ctx.save();
   ctx.beginPath();
-  ctx.roundRect(x + 10, y + 10, width - 20, height - 20, Math.max(8, radius - 8));
+  ctx.roundRect(card.x + inset, card.y + inset, card.width - inset * 2, card.height - inset * 2, innerRadius);
   ctx.clip();
-  drawImageInBox(ctx, image, x + 10, y + 10, width - 20, height - 20, data.fitMode);
+  drawImageInBox(ctx, image, card.x + inset, card.y + inset, card.width - inset * 2, card.height - inset * 2, data.fitMode);
   ctx.restore();
 }
 
@@ -181,7 +227,9 @@ function darkTech(args: TemplateRenderArgs) {
   ctx.fillStyle = "#020617";
   ctx.fillRect(0, 0, width, height);
 
-  ctx.strokeStyle = "rgba(124, 58, 237, 0.28)";
+  ctx.save();
+  ctx.globalAlpha = 0.28;
+  ctx.strokeStyle = data.themeColor;
   ctx.lineWidth = Math.max(1, width * 0.0015);
   for (let x = -width * 0.2; x < width * 1.2; x += width * 0.08) {
     ctx.beginPath();
@@ -189,6 +237,7 @@ function darkTech(args: TemplateRenderArgs) {
     ctx.lineTo(x + width * 0.28, height);
     ctx.stroke();
   }
+  ctx.restore();
 
   ctx.fillStyle = data.themeColor;
   ctx.globalAlpha = 0.22;
@@ -247,7 +296,11 @@ function featureCards(args: TemplateRenderArgs) {
   setFont(ctx, 900, titleFontSize);
   drawOptionalWrappedText(ctx, textWithDefault(data.title, "Everything you need, one click away"), width * 0.08, height * 0.2, width * 0.3, titleFontSize * 1.18, isMarquee ? 2 : 3);
 
-  const cards = [textWithDefault(data.badge, "Fast setup"), textWithDefault(data.cta, "No account"), textWithDefault(data.subtitle, "Private by design")].filter((card) => card.trim());
+  const cards = [
+    textWithDefault(data.feature, "Capture, compose, and export store assets locally."),
+    textWithDefault(data.cta, "No account"),
+    textWithDefault(data.subtitle, "Private by design")
+  ].filter((card) => card.trim());
   cards.forEach((card, index) => {
     const cardY = height * (0.54 + index * 0.115);
     const cardHeight = height * 0.082;
@@ -312,15 +365,15 @@ function chromeBlue(args: TemplateRenderArgs) {
   const isMarquee = width / height > 2.1;
   ctx.fillStyle = "#e0f2fe";
   ctx.fillRect(0, 0, width, height);
-  ctx.fillStyle = "#2563eb";
+  ctx.fillStyle = data.themeColor;
   ctx.beginPath();
   ctx.arc(width * 0.86, height * 0.22, width * 0.24, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = "#22c55e";
+  ctx.fillStyle = shade(data.themeColor, 36);
   ctx.beginPath();
   ctx.arc(width * 0.15, height * 0.83, width * 0.2, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = "#f59e0b";
+  ctx.fillStyle = shade(data.themeColor, -28);
   ctx.beginPath();
   ctx.arc(width * 0.16, height * 0.12, width * 0.12, 0, Math.PI * 2);
   ctx.fill();
@@ -373,74 +426,145 @@ function diagonalShowcase(args: TemplateRenderArgs) {
 export const templates: Template[] = [
   {
     id: "chrome-classic-hero",
-    name: "Chrome Classic Hero",
-    description: "Classic left-copy, right-screenshot layout for main hero assets.",
-    category: "store",
+    name: "Chrome Hero",
+    description: "Extension hero screenshot with large title and benefit text.",
+    category: "chrome-store",
     fields: ["title", "subtitle", "badge"],
     sizes: chromeStoreSizes,
+    defaultValues: {
+      ...defaultData,
+      title: "Launch faster with Chrome tools",
+      subtitle: "Turn one screenshot into polished Chrome Web Store assets.",
+      badge: "CHROME STORE READY"
+    },
+    previewAccent: defaultData.themeColor,
     render: classicHero
+  },
+  {
+    id: "chrome-feature-spotlight",
+    name: "Feature Spotlight",
+    description: "Emphasize one core extension feature beside a screenshot.",
+    category: "chrome-store",
+    fields: ["title", "feature", "cta"],
+    sizes: chromeStoreSizes,
+    defaultValues: {
+      ...defaultData,
+      title: "Everything you need, one click away",
+      subtitle: "Private by design",
+      badge: "Fast setup",
+      cta: "No account",
+      feature: "Capture, compose, and export store assets locally."
+    },
+    previewAccent: defaultData.themeColor,
+    render: featureCards
   },
   {
     id: "chrome-browser-frame",
     name: "Browser Frame",
     description: "Places your screenshot inside a browser frame for product UI previews.",
-    category: "store",
+    category: "chrome-store",
     fields: ["title", "subtitle"],
     sizes: chromeStoreSizes,
+    defaultValues: {
+      ...defaultData,
+      title: "A smarter browser workflow",
+      subtitle: "Show your extension inside a clean Chrome frame."
+    },
+    previewAccent: defaultData.themeColor,
     render: browserFrame
   },
   {
     id: "chrome-dark-tech",
     name: "Dark Tech",
     description: "A dark, technical look for developer tools and productivity extensions.",
-    category: "store",
+    category: "chrome-store",
     fields: ["title", "subtitle", "badge"],
     sizes: chromeStoreSizes,
+    defaultValues: {
+      ...defaultData,
+      title: "Power up your Chrome tab",
+      subtitle: "A high-contrast template for developer and productivity extensions.",
+      badge: "NEW EXTENSION"
+    },
+    previewAccent: defaultData.themeColor,
     render: darkTech
   },
   {
     id: "chrome-minimal-white",
     name: "Minimal White",
     description: "A minimal light style for polished professional tools.",
-    category: "store",
+    category: "chrome-store",
     fields: ["title", "subtitle"],
     sizes: chromeStoreSizes,
+    defaultValues: {
+      ...defaultData,
+      title: "Clean assets for your extension",
+      subtitle: "A minimal layout for polished Chrome Store screenshots."
+    },
+    previewAccent: defaultData.themeColor,
     render: minimalWhite
   },
   {
     id: "chrome-feature-cards",
     name: "Feature Cards",
     description: "Three feature cards that highlight the extension's core benefits.",
-    category: "store",
+    category: "chrome-store",
     fields: ["title", "subtitle", "badge", "cta"],
     sizes: chromeStoreSizes,
+    defaultValues: {
+      ...defaultData,
+      title: "Everything you need, one click away",
+      subtitle: "Private by design",
+      badge: "Fast setup",
+      cta: "No account"
+    },
+    previewAccent: defaultData.themeColor,
     render: featureCards
   },
   {
     id: "chrome-big-badge",
     name: "Big Badge",
     description: "A large badge and strong headline for launches or featured placements.",
-    category: "store",
+    category: "chrome-store",
     fields: ["title", "subtitle", "badge"],
     sizes: chromeStoreSizes,
+    defaultValues: {
+      ...defaultData,
+      title: "Make Chrome feel personal",
+      subtitle: "A bold editorial style for benefit-led store assets.",
+      badge: "FEATURED"
+    },
+    previewAccent: defaultData.themeColor,
     render: bigBadge
   },
   {
     id: "chrome-blue-shapes",
     name: "Chrome Blue Shapes",
     description: "Chrome-inspired colors and circular shapes for a friendly visual style.",
-    category: "store",
+    category: "chrome-store",
     fields: ["title", "subtitle"],
     sizes: chromeStoreSizes,
+    defaultValues: {
+      ...defaultData,
+      title: "Built for Chrome users",
+      subtitle: "A friendly Chrome-inspired layout with soft shapes."
+    },
+    previewAccent: defaultData.themeColor,
     render: chromeBlue
   },
   {
     id: "chrome-diagonal-showcase",
     name: "Diagonal Showcase",
     description: "An angled composition with a tilted screenshot for more dynamic assets.",
-    category: "store",
+    category: "chrome-store",
     fields: ["title", "subtitle"],
     sizes: chromeStoreSizes,
+    defaultValues: {
+      ...defaultData,
+      title: "Show the moment it clicks",
+      subtitle: "A dynamic angled layout for action-focused extensions."
+    },
+    previewAccent: defaultData.themeColor,
     render: diagonalShowcase
   }
 ];

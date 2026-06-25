@@ -9,37 +9,46 @@ import type { EditableField, ExportSize, HistoryItem, ImageFitMode, Template, Te
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-const initialData: TemplateData = {
-  title: "Launch faster with Chrome tools",
-  subtitle: "Turn one screenshot into polished Chrome Web Store assets.",
-  badge: "CHROME STORE READY",
-  cta: "Private by design",
-  themeColor: "#2563eb",
-  fitMode: "cover"
-};
+const initialData: TemplateData = defaultTemplate.defaultValues;
 
 const fieldLabels: Record<EditableField, string> = {
   title: "Title",
   subtitle: "Subtitle",
   badge: "Badge",
-  cta: "Feature Point"
+  cta: "CTA",
+  feature: "Feature Point"
+};
+
+const fieldCharacterLimits: Record<EditableField, number> = {
+  title: 46,
+  subtitle: 92,
+  badge: 24,
+  cta: 28,
+  feature: 72
 };
 
 const fitModeOptions: Array<{ label: string; value: ImageFitMode }> = [
-  { label: "Crop to Fill", value: "cover" },
+  { label: "Center Original", value: "center" },
+  { label: "Fill Frame", value: "fill" },
   { label: "Fit Entire Image", value: "contain" },
-  { label: "Center Original", value: "center" }
+  { label: "Crop to Frame", value: "crop" }
 ];
+
+const categoryLabels: Record<Template["category"], string> = {
+  "chrome-store": "Chrome Store"
+};
 
 type PreviewCardProps = {
   template: Template;
   image: HTMLImageElement;
   data: TemplateData;
   size: ExportSize;
+  isSelected: boolean;
+  onToggle: (sizeId: string) => void;
   onDownload: (size: ExportSize) => void;
 };
 
-function PreviewCard({ template, image, data, size, onDownload }: PreviewCardProps) {
+function PreviewCard({ template, image, data, size, isSelected, onToggle, onDownload }: PreviewCardProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [error, setError] = useState("");
 
@@ -59,19 +68,35 @@ function PreviewCard({ template, image, data, size, onDownload }: PreviewCardPro
   }, [data, image, size, template]);
 
   return (
-    <article className="preview-card">
+    <article className={`preview-card ${isSelected ? "preview-card--selected" : ""}`}>
       <div className="preview-card__meta">
-        <div>
-          <strong>{size.label}</strong>
+        <label className="preview-card__selector">
+          <input type="checkbox" checked={isSelected} onChange={() => onToggle(size.id)} />
           <span>
-            {size.width} x {size.height} · {size.useCase}
+            <strong>{size.label}</strong>
+            <span>
+              {size.width} x {size.height} · {size.useCase}
+            </span>
           </span>
-        </div>
+        </label>
         <button type="button" className="button button--ghost" onClick={() => onDownload(size)}>
           Download
         </button>
       </div>
-      <div className="preview-stage" style={{ aspectRatio: `${size.width} / ${size.height}` }}>
+      <div
+        className="preview-stage"
+        role="button"
+        tabIndex={0}
+        aria-pressed={isSelected}
+        style={{ aspectRatio: `${size.width} / ${size.height}` }}
+        onClick={() => onToggle(size.id)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onToggle(size.id);
+          }
+        }}
+      >
         {error ? <p className="error-text">{error}</p> : <canvas ref={canvasRef} aria-label={`${size.label} preview`} />}
       </div>
     </article>
@@ -95,6 +120,26 @@ function readFileAsDataUrl(file: File) {
   });
 }
 
+function limitFieldValue(field: EditableField, value: string) {
+  return Array.from(value).slice(0, fieldCharacterLimits[field]).join("");
+}
+
+function normalizeTemplateData(nextData: TemplateData): TemplateData {
+  const mergedData = {
+    ...defaultTemplate.defaultValues,
+    ...nextData
+  };
+
+  return {
+    ...mergedData,
+    title: limitFieldValue("title", mergedData.title),
+    subtitle: limitFieldValue("subtitle", mergedData.subtitle),
+    badge: limitFieldValue("badge", mergedData.badge),
+    cta: limitFieldValue("cta", mergedData.cta),
+    feature: limitFieldValue("feature", mergedData.feature)
+  };
+}
+
 export function ImageTemplateGenerator() {
   const [templateId, setTemplateId] = useState(defaultTemplate.id);
   const [data, setData] = useState<TemplateData>(initialData);
@@ -113,6 +158,15 @@ export function ImageTemplateGenerator() {
     () => selectedTemplate.sizes.filter((size) => selectedSizeIds.includes(size.id)),
     [selectedSizeIds, selectedTemplate]
   );
+  const imageDimensionsLabel = useMemo(() => {
+    if (!image) {
+      return "";
+    }
+
+    const width = image.naturalWidth || image.width;
+    const height = image.naturalHeight || image.height;
+    return width > 0 && height > 0 ? `${width} x ${height}` : "";
+  }, [image]);
 
   useEffect(() => {
     setHistory(loadHistory());
@@ -149,7 +203,8 @@ export function ImageTemplateGenerator() {
   }
 
   function updateData<K extends keyof TemplateData>(key: K, value: TemplateData[K]) {
-    setData((current) => ({ ...current, [key]: value }));
+    const nextValue = typeof value === "string" && key in fieldCharacterLimits ? limitFieldValue(key as EditableField, value) : value;
+    setData((current) => ({ ...current, [key]: nextValue }));
   }
 
   function clearField(field: EditableField) {
@@ -172,6 +227,11 @@ export function ImageTemplateGenerator() {
   function handleTemplateChange(nextTemplateId: string) {
     const nextTemplate = templates.find((template) => template.id === nextTemplateId) ?? defaultTemplate;
     setTemplateId(nextTemplate.id);
+    setData((current) => ({
+      ...nextTemplate.defaultValues,
+      themeColor: current.themeColor,
+      fitMode: current.fitMode
+    }));
     setSelectedSizeIds(nextTemplate.sizes.map((size) => size.id));
   }
 
@@ -250,7 +310,7 @@ export function ImageTemplateGenerator() {
   async function restoreHistory(item: HistoryItem) {
     const nextTemplate = templates.find((template) => template.id === item.templateId) ?? defaultTemplate;
     setTemplateId(nextTemplate.id);
-    setData(item.data);
+    setData(normalizeTemplateData(item.data));
     setSelectedSizeIds(item.selectedSizeIds.filter((sizeId) => nextTemplate.sizes.some((size) => size.id === sizeId)));
 
     if (item.imageDataUrl) {
@@ -281,7 +341,7 @@ export function ImageTemplateGenerator() {
           </p>
         </div>
         <button type="button" className="button button--primary" disabled={!image || isDownloading} onClick={handleDownloadAll}>
-          {isDownloading ? "Generating..." : "Download Selected Sizes"}
+          {isDownloading ? "Generating..." : `Download Selected Previews (${selectedSizes.length})`}
         </button>
       </section>
 
@@ -328,6 +388,9 @@ export function ImageTemplateGenerator() {
                 </div>
               )}
             </label>
+            {imageDimensionsLabel ? (
+              <p className="upload-meta">Source image: {imageDimensionsLabel}. Template masks auto-adapt to this aspect ratio.</p>
+            ) : null}
           </section>
 
           <section>
@@ -341,8 +404,10 @@ export function ImageTemplateGenerator() {
                   type="button"
                   key={template.id}
                   className={`template-option ${template.id === selectedTemplate.id ? "template-option--active" : ""}`}
+                  style={{ ["--template-accent" as string]: template.previewAccent }}
                   onClick={() => handleTemplateChange(template.id)}
                 >
+                  <span className="template-option__category">{categoryLabels[template.category]}</span>
                   <strong>{template.name}</strong>
                   <span>{template.description}</span>
                 </button>
@@ -356,25 +421,36 @@ export function ImageTemplateGenerator() {
               <h2>Edit Copy</h2>
             </div>
             <div className="field-grid">
-              {selectedTemplate.fields.map((field) => (
-                <div key={field} className="field">
-                  <div className="field__heading">
-                    <label htmlFor={`copy-${field}`}>{fieldLabels[field]}</label>
-                    <button type="button" className="field__clear" disabled={!data[field].trim()} onClick={() => clearField(field)}>
-                      Clear
-                    </button>
+              {selectedTemplate.fields.map((field) => {
+                const characterLimit = fieldCharacterLimits[field];
+                const characterCount = Array.from(data[field]).length;
+                const helperId = `copy-${field}-limit`;
+
+                return (
+                  <div key={field} className="field">
+                    <div className="field__heading">
+                      <label htmlFor={`copy-${field}`}>{fieldLabels[field]}</label>
+                      <button type="button" className="field__clear" disabled={!data[field].trim()} onClick={() => clearField(field)}>
+                        Clear
+                      </button>
+                    </div>
+                    <input
+                      id={`copy-${field}`}
+                      ref={(input) => {
+                        fieldInputRefs.current[field] = input;
+                      }}
+                      placeholder="Cleared. Type to restore this copy."
+                      value={data[field]}
+                      maxLength={characterLimit}
+                      aria-describedby={helperId}
+                      onChange={(event) => updateData(field, event.target.value)}
+                    />
+                    <span id={helperId} className="field__hint">
+                      {characterCount}/{characterLimit} characters
+                    </span>
                   </div>
-                  <input
-                    id={`copy-${field}`}
-                    ref={(input) => {
-                      fieldInputRefs.current[field] = input;
-                    }}
-                    placeholder="Cleared. Type to restore this copy."
-                    value={data[field]}
-                    onChange={(event) => updateData(field, event.target.value)}
-                  />
-                </div>
-              ))}
+                );
+              })}
               <label className="field">
                 <span>Theme Color</span>
                 <input type="color" value={data.themeColor} onChange={(event) => updateData("themeColor", event.target.value)} />
@@ -389,24 +465,6 @@ export function ImageTemplateGenerator() {
                   ))}
                 </select>
               </label>
-            </div>
-          </section>
-
-          <section>
-            <div className="section-title">
-              <span>4</span>
-              <h2>Export Sizes</h2>
-            </div>
-            <div className="size-list">
-              {selectedTemplate.sizes.map((size) => (
-                <label key={size.id} className="size-option">
-                  <input type="checkbox" checked={selectedSizeIds.includes(size.id)} onChange={() => toggleSize(size.id)} />
-                  <span>
-                    <strong>{size.label}</strong>
-                    {size.width} x {size.height}
-                  </span>
-                </label>
-              ))}
             </div>
           </section>
 
@@ -427,17 +485,19 @@ export function ImageTemplateGenerator() {
           {!image ? (
             <div className="empty-state">
               <strong>Upload an image first</strong>
-              <span>Previews will render automatically with the current template and selected sizes.</span>
+              <span>Previews will render automatically. Select sizes directly from the preview cards.</span>
             </div>
           ) : (
             <div className="preview-grid">
-              {selectedSizes.map((size) => (
+              {selectedTemplate.sizes.map((size) => (
                 <PreviewCard
                   key={size.id}
                   template={selectedTemplate}
                   image={image}
                   data={data}
                   size={size}
+                  isSelected={selectedSizeIds.includes(size.id)}
+                  onToggle={toggleSize}
                   onDownload={(nextSize) => void handleDownloadSize(nextSize)}
                 />
               ))}
@@ -452,7 +512,7 @@ export function ImageTemplateGenerator() {
           <aside className="panel history-popover">
             <div className="history-popover__header">
               <div className="section-title">
-                <span>5</span>
+                <span>4</span>
                 <h2>Recent History</h2>
               </div>
               <button type="button" className="button button--ghost" onClick={() => setIsHistoryOpen(false)}>

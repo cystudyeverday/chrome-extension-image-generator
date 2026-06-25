@@ -1,8 +1,8 @@
-export type TemplateCategory = "store";
+export type TemplateCategory = "chrome-store";
 
-export type ImageFitMode = "contain" | "cover" | "center";
+export type ImageFitMode = "center" | "fill" | "contain" | "crop" | "cover";
 
-export type EditableField = "title" | "subtitle" | "badge" | "cta";
+export type EditableField = "title" | "subtitle" | "badge" | "cta" | "feature";
 
 export type ExportSize = {
   id: string;
@@ -17,6 +17,7 @@ export type TemplateData = {
   subtitle: string;
   badge: string;
   cta: string;
+  feature: string;
   themeColor: string;
   fitMode: ImageFitMode;
 };
@@ -35,6 +36,8 @@ export type Template = {
   category: TemplateCategory;
   fields: EditableField[];
   sizes: ExportSize[];
+  defaultValues: TemplateData;
+  previewAccent: string;
   render: (args: TemplateRenderArgs) => void;
 };
 

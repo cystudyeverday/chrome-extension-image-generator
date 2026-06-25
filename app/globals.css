@@ -253,6 +253,14 @@ button:disabled {
   object-fit: contain;
 }
 
+.upload-meta {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .template-list,
 .field-grid,
 .size-list,
@@ -274,7 +282,9 @@ button:disabled {
 }
 
 .template-option {
+  position: relative;
   padding: 10px;
+  border-left: 4px solid var(--template-accent, var(--primary));
 }
 
 .template-option strong,
@@ -291,6 +301,20 @@ button:disabled {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.35;
+}
+
+.template-option .template-option__category {
+  display: inline-flex;
+  width: fit-content;
+  margin: 0 0 6px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  color: var(--template-accent, var(--primary));
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .template-option--active {
@@ -334,6 +358,13 @@ button:disabled {
 
 .field__clear:hover:not(:disabled) {
   background: rgba(220, 38, 38, 0.14);
+}
+
+.field__hint {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: right;
 }
 
 .field input,
@@ -438,6 +469,11 @@ button:disabled {
   background: rgba(255, 255, 255, 0.74);
 }
 
+.preview-card--selected {
+  border-color: rgba(124, 58, 237, 0.62);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
 .preview-card__meta {
   display: flex;
   gap: 10px;
@@ -448,8 +484,13 @@ button:disabled {
   border-bottom: 1px solid var(--border);
 }
 
-.preview-card__meta > div {
+.preview-card__selector {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: center;
   min-width: 0;
+  cursor: pointer;
 }
 
 .preview-card__meta strong,
@@ -469,6 +510,7 @@ button:disabled {
   width: 100%;
   place-items: center;
   overflow: hidden;
+  cursor: pointer;
   background:
     linear-gradient(45deg, #f1f5f9 25%, transparent 25%),
     linear-gradient(-45deg, #f1f5f9 25%, transparent 25%),
@@ -481,6 +523,11 @@ button:disabled {
     10px -10px,
     -10px 0;
   background-size: 20px 20px;
+}
+
+.preview-stage:focus-visible {
+  outline: 3px solid rgba(124, 58, 237, 0.36);
+  outline-offset: -3px;
 }
 
 .preview-stage canvas {

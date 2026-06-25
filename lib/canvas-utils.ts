@@ -153,7 +153,7 @@ export function drawImageInBox(
     return;
   }
 
-  const shouldCover = fitMode === "cover";
+  const shouldCover = fitMode === "cover" || fitMode === "crop" || fitMode === "fill";
   const useBoxWidth = shouldCover ? imageRatio < boxRatio : imageRatio > boxRatio;
   const drawWidth = useBoxWidth ? width : height * imageRatio;
   const drawHeight = useBoxWidth ? width / imageRatio : height;
