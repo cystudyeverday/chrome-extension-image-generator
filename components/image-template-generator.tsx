@@ -48,6 +48,12 @@ type PreviewCardProps = {
   onDownload: (size: ExportSize) => void;
 };
 
+type TemplateOptionPreviewProps = {
+  template: Template;
+  image: HTMLImageElement;
+  data: TemplateData;
+};
+
 function PreviewCard({ template, image, data, size, isSelected, onToggle, onDownload }: PreviewCardProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [error, setError] = useState("");
@@ -100,6 +106,37 @@ function PreviewCard({ template, image, data, size, isSelected, onToggle, onDown
         {error ? <p className="error-text">{error}</p> : <canvas ref={canvasRef} aria-label={`${size.label} preview`} />}
       </div>
     </article>
+  );
+}
+
+function TemplateOptionPreview({ template, image, data }: TemplateOptionPreviewProps) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [error, setError] = useState("");
+  const previewSize = template.sizes[0];
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !previewSize) {
+      return;
+    }
+
+    try {
+      setError("");
+      const previewData: TemplateData = {
+        ...template.defaultValues,
+        themeColor: data.themeColor,
+        fitMode: data.fitMode
+      };
+      renderTemplateToCanvas(canvas, template, image, previewData, previewSize, Math.min(1, 220 / previewSize.width));
+    } catch (renderError) {
+      setError(renderError instanceof Error ? renderError.message : "Preview failed");
+    }
+  }, [data.fitMode, data.themeColor, image, previewSize, template]);
+
+  return (
+    <span className="template-option__preview" style={{ aspectRatio: `${previewSize.width} / ${previewSize.height}` }} aria-hidden="true">
+      {error ? <span className="template-option__preview-error">Preview unavailable</span> : <canvas ref={canvasRef} />}
+    </span>
   );
 }
 
@@ -176,7 +213,7 @@ export function ImageTemplateGenerator() {
   }, []);
 
   useEffect(() => {
-    if (!image || !focusEditAfterImageLoadRef.current) {
+    if (!hasEnteredEditor || !image || !focusEditAfterImageLoadRef.current) {
       return;
     }
 
@@ -188,7 +225,7 @@ export function ImageTemplateGenerator() {
         fieldInputRefs.current[firstField]?.focus();
       }
     });
-  }, [image, selectedTemplate.fields]);
+  }, [hasEnteredEditor, image, selectedTemplate.fields]);
 
   useEffect(() => {
     if (!selectedTemplate.sizes.some((size) => selectedSizeIds.includes(size.id))) {
@@ -214,12 +251,22 @@ export function ImageTemplateGenerator() {
       const loadedImage = await createImageFromDataUrl(dataUrl);
       setImageDataUrl(dataUrl);
       setImage(loadedImage);
-      setHasEnteredEditor(true);
-      focusEditAfterImageLoadRef.current = true;
-      setMessage("Image loaded locally. Nothing was uploaded to a server.");
+      setHasEnteredEditor(false);
+      setMessage("Screenshot ready. Continue to choose a template.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to load the image.");
     }
+  }
+
+  function enterEditor() {
+    if (!image) {
+      setMessage("Upload an image first.");
+      return;
+    }
+
+    setHasEnteredEditor(true);
+    focusEditAfterImageLoadRef.current = true;
+    setMessage("Image loaded locally. Nothing was uploaded to a server.");
   }
 
   function updateData<K extends keyof TemplateData>(key: K, value: TemplateData[K]) {
@@ -404,20 +451,29 @@ export function ImageTemplateGenerator() {
                     }
                   }}
                 />
-                <div>
-                  <span className="upload-box__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" focusable="false">
-                      <path d="M12 16V8m0 0-3.2 3.2M12 8l3.2 3.2" />
-                      <path d="M8.5 18.5H7.8a5.3 5.3 0 0 1-.7-10.55 6 6 0 0 1 11.08 2.72A3.95 3.95 0 0 1 17 18.5h-1.5" />
-                    </svg>
-                  </span>
-                  <strong>Drop your screenshot here</strong>
-                  <span>Or choose a PNG, JPG, or WebP from your computer.</span>
-                </div>
+                {imageDataUrl ? (
+                  <div className="upload-box__ready">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={imageDataUrl} alt="Selected screenshot preview" />
+                    <strong>Screenshot ready</strong>
+                    <span>{imageDimensionsLabel ? `${imageDimensionsLabel} screenshot selected.` : "Screenshot selected."}</span>
+                  </div>
+                ) : (
+                  <div>
+                    <span className="upload-box__icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" focusable="false">
+                        <path d="M12 16V8m0 0-3.2 3.2M12 8l3.2 3.2" />
+                        <path d="M8.5 18.5H7.8a5.3 5.3 0 0 1-.7-10.55 6 6 0 0 1 11.08 2.72A3.95 3.95 0 0 1 17 18.5h-1.5" />
+                      </svg>
+                    </span>
+                    <strong>Drop your screenshot here</strong>
+                    <span>Or choose a PNG, JPG, or WebP from your computer.</span>
+                  </div>
+                )}
               </label>
               <div className="upload-landing__footer">
                 <label className="button button--secondary file-button upload-landing__generate">
-                  Choose screenshot
+                  {image ? "Change screenshot" : "Choose screenshot"}
                   <input
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
@@ -429,7 +485,13 @@ export function ImageTemplateGenerator() {
                     }}
                   />
                 </label>
-                <p className="upload-landing__privacy">Local browser processing.</p>
+                {image ? (
+                  <button type="button" className="button button--primary upload-landing__next" onClick={enterEditor}>
+                    Next
+                  </button>
+                ) : (
+                  <p className="upload-landing__privacy">Local browser processing.</p>
+                )}
               </div>
             </div>
             {message ? <p className="notice">{message}</p> : null}
@@ -486,9 +548,12 @@ export function ImageTemplateGenerator() {
                   style={{ ["--template-accent" as string]: template.previewAccent }}
                   onClick={() => handleTemplateChange(template.id)}
                 >
-                  <span className="template-option__category">{categoryLabels[template.category]}</span>
-                  <strong>{template.name}</strong>
-                  <span>{template.description}</span>
+                  <TemplateOptionPreview template={template} image={image} data={data} />
+                  <span className="template-option__body">
+                    <span className="template-option__category">{categoryLabels[template.category]}</span>
+                    <strong>{template.name}</strong>
+                    <span>{template.description}</span>
+                  </span>
                 </button>
               ))}
             </div>
