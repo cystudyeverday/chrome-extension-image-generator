@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "StoreShot - Chrome Store Image Generator",
+  title: "StoreShot",
   description: "Generate Chrome Web Store promotional images locally with templates."
 };
 

@@ -34,10 +34,6 @@ const fitModeOptions: Array<{ label: string; value: ImageFitMode }> = [
   { label: "Crop to Frame", value: "crop" }
 ];
 
-const categoryLabels: Record<Template["category"], string> = {
-  "chrome-store": "Chrome Store"
-};
-
 type PreviewCardProps = {
   template: Template;
   image: HTMLImageElement;
@@ -190,7 +186,6 @@ export function ImageTemplateGenerator() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [hasEnteredEditor, setHasEnteredEditor] = useState(false);
   const fieldInputRefs = useRef<Partial<Record<EditableField, HTMLInputElement | null>>>({});
-  const editSectionRef = useRef<HTMLElement | null>(null);
   const focusEditAfterImageLoadRef = useRef(false);
 
   const selectedTemplate = useMemo(() => templates.find((template) => template.id === templateId) ?? defaultTemplate, [templateId]);
@@ -219,10 +214,10 @@ export function ImageTemplateGenerator() {
 
     focusEditAfterImageLoadRef.current = false;
     requestAnimationFrame(() => {
-      editSectionRef.current?.scrollIntoView({ block: "start" });
+      window.scrollTo({ top: 0, left: 0 });
       const firstField = selectedTemplate.fields[0];
       if (firstField) {
-        fieldInputRefs.current[firstField]?.focus();
+        fieldInputRefs.current[firstField]?.focus({ preventScroll: true });
       }
     });
   }, [hasEnteredEditor, image, selectedTemplate.fields]);
@@ -401,12 +396,12 @@ export function ImageTemplateGenerator() {
   if (!hasEnteredEditor || !image) {
     return (
       <main className="shell upload-shell">
-        <div className="upload-shell__background-mockup" aria-hidden="true">
-          <span className="upload-shell__background-bar" />
-          <span className="upload-shell__background-image" />
-          <span className="upload-shell__background-copy" />
+        <div className="upload-shell__aura" aria-hidden="true">
+          <span className="upload-shell__aura-orb upload-shell__aura-orb--violet" />
+          <span className="upload-shell__aura-orb upload-shell__aura-orb--cyan" />
+          <span className="upload-shell__aura-orb upload-shell__aura-orb--amber" />
         </div>
-        <section className="upload-landing panel">
+        <section className="upload-landing">
           <div className="upload-landing__copy">
             <p className="eyebrow">StoreShot</p>
             <h1>Turn one screenshot into Chrome Store images.</h1>
@@ -505,8 +500,8 @@ export function ImageTemplateGenerator() {
     <main className="shell">
       <section className="hero">
         <div>
-          <p className="eyebrow">StoreShot MVP</p>
-          <h1>Chrome Store Image Template Generator</h1>
+          <p className="eyebrow">Chrome Store Asset Generator</p>
+          <h1>StoreShot</h1>
           <p>
             Create Chrome Web Store assets from one extension screenshot. Pick a promotional template, edit the copy, and export
             1280x800, 1400x560, and 440x280 PNGs. Everything runs locally in your browser.
@@ -550,16 +545,14 @@ export function ImageTemplateGenerator() {
                 >
                   <TemplateOptionPreview template={template} image={image} data={data} />
                   <span className="template-option__body">
-                    <span className="template-option__category">{categoryLabels[template.category]}</span>
                     <strong>{template.name}</strong>
-                    <span>{template.description}</span>
                   </span>
                 </button>
               ))}
             </div>
           </section>
 
-          <section ref={editSectionRef}>
+          <section>
             <div className="section-title">
               <span>2</span>
               <h2>Edit Copy</h2>
