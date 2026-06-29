@@ -1,4 +1,4 @@
-# StoreShot
+# Chrome Store Image Generator
 
 A local-first Chrome Web Store image template generator built with React, Next.js App Router, and TypeScript.
 

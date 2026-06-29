@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "StoreShot",
+  "name": "Chrome Store Image Generator",
   "description": "Local Chrome Web Store promotional image generator.",
   "version": "0.1.0",
   "action": {
-    "default_title": "StoreShot",
+    "default_title": "Chrome Store Image Generator",
     "default_popup": "index.html"
   },
   "permissions": []

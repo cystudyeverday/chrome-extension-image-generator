@@ -10,7 +10,7 @@ Existing Chrome Extension, local SVG/Canvas generation, and Chrome Web Store ass
 
 ## 2. Product Positioning
 
-Chosen name: StoreShot.
+Chosen name: Chrome Store Image Generator.
 
 One-line positioning:
 
