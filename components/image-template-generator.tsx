@@ -408,22 +408,13 @@ export function ImageTemplateGenerator() {
             <p className="upload-landing__lede">Upload your web extension screenshot. Everything runs locally in your browser with high security.</p>
           </header>
           <div className="upload-landing__main">
-            <div className="upload-landing__mockup" aria-label="Chrome Store image mockup">
-        
-              <div className="upload-landing__outputs" aria-label="Generated Chrome Store outputs">
-                <span>Generates</span>
-                <ul>
-                  {defaultTemplate.sizes.map((size) => (
-                    <li key={size.id}>
-                      <strong>{size.width}x{size.height}</strong>
-                      <span>{size.label}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
             <div className="upload-landing__stage">
               <div className="upload-landing__action">
+                <div className="upload-landing__upload-heading">
+                  <span>Start here</span>
+                  <strong>Upload your screenshot first</strong>
+                  <p>Choose the extension image you want to turn into Chrome Store assets.</p>
+                </div>
                 <label
                   className={`upload-box upload-box--landing ${isDragging ? "upload-box--active" : ""}`}
                   onDragOver={(event) => {
@@ -465,11 +456,25 @@ export function ImageTemplateGenerator() {
                           <path d="M8.5 18.5H7.8a5.3 5.3 0 0 1-.7-10.55 6 6 0 0 1 11.08 2.72A3.95 3.95 0 0 1 17 18.5h-1.5" />
                         </svg>
                       </span>
-                      <strong>Drop your screenshot here</strong>
-                      <span>Or choose a PNG, JPG, or WebP from your computer.</span>
+                      <strong>Drop your image here</strong>
+                      <span>Click to upload a PNG, JPG, or WebP screenshot.</span>
                     </div>
                   )}
                 </label>
+                <ol className="upload-landing__steps" aria-label="Generator workflow">
+                  <li>
+                    <strong>01</strong>
+                    <span>Upload screenshot</span>
+                  </li>
+                  <li>
+                    <strong>02</strong>
+                    <span>Edit template copy</span>
+                  </li>
+                  <li>
+                    <strong>03</strong>
+                    <span>Export every size</span>
+                  </li>
+                </ol>
                 <div className="upload-landing__footer">
                   {image ? (
                     <button type="button" className="button button--primary upload-landing__next" onClick={enterEditor}>
