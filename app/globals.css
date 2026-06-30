@@ -52,8 +52,9 @@ button:disabled {
 .upload-shell {
   position: relative;
   display: grid;
-  height: 100svh;
-  overflow: hidden;
+  min-height: 100svh;
+  overflow-x: hidden;
+  overflow-y: auto;
   place-items: center;
   padding: clamp(12px, 2.4vw, 28px);
   isolation: isolate;
@@ -1064,6 +1065,11 @@ button:disabled {
     padding: 12px;
   }
 
+  .upload-shell {
+    align-items: start;
+    padding: 14px;
+  }
+
   .hero,
   .previews__header {
     align-items: stretch;
@@ -1079,25 +1085,35 @@ button:disabled {
   }
 
   .upload-landing {
-    gap: 22px;
-    padding: 18px 8px;
+    max-height: none;
+    gap: 18px;
+    padding: 10px 2px 28px;
   }
 
   .upload-landing__header h1 {
     max-width: 420px;
-    font-size: clamp(28px, 8.4vw, 36px);
-    letter-spacing: -0.06em;
-    line-height: 0.94;
+    margin-top: 6px;
+    font-size: clamp(21px, 6vw, 27px);
+    letter-spacing: -0.035em;
+    line-height: 1.04;
     white-space: normal;
   }
 
   .upload-landing__lede {
     max-width: 420px;
-    margin-top: 14px;
+    margin-top: 10px;
+    font-size: 12px;
+    line-height: 1.5;
   }
 
   .upload-landing__stage {
-    gap: 12px;
+    gap: 14px;
+  }
+
+  .upload-landing__action {
+    gap: 16px;
+    border-radius: 28px;
+    padding: 16px;
   }
 
   .upload-shell__aura-orb--amber {
@@ -1105,26 +1121,66 @@ button:disabled {
   }
 
   .upload-box--landing {
-    min-height: 220px;
+    min-height: clamp(176px, 34svh, 220px);
+    border-radius: 26px;
+  }
+
+  .upload-box__icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 20px;
   }
 
   .upload-landing__upload-heading strong {
-    font-size: 22px;
+    font-size: 17px;
+    letter-spacing: -0.02em;
+    line-height: 1.12;
+  }
+
+  .upload-landing__upload-heading p {
+    font-size: 11px;
+  }
+
+  .upload-box--landing strong {
+    font-size: 16px;
+  }
+
+  .upload-box--landing span:not(.upload-box__icon) {
+    font-size: 11px;
+    line-height: 1.45;
   }
 
   .upload-landing__footer {
     align-items: stretch;
     flex-direction: column;
+    order: 3;
+  }
+
+  .upload-landing__next {
+    width: 100%;
+    min-height: 46px;
   }
 
   .upload-landing__steps {
+    order: 4;
     grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .upload-landing__steps li {
     min-height: 0;
     grid-template-columns: auto 1fr;
+    gap: 10px;
     align-items: center;
+    padding: 11px 12px;
+  }
+
+  .upload-landing__steps strong {
+    font-size: 10px;
+  }
+
+  .upload-landing__steps span {
+    font-size: 11px;
   }
 
   .floating-history {
