@@ -26,3 +26,11 @@ npm run build
 ```
 
 The static extension-ready output is generated in `out/`.
+
+## SEO Domain
+
+Set the production domain with `NEXT_PUBLIC_SITE_URL` so canonical URLs, Open Graph metadata, `robots.txt`, and `sitemap.xml` use the correct host:
+
+```bash
+NEXT_PUBLIC_SITE_URL=https://www.easyimagegen.work
+```

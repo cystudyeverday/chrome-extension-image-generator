@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
-
-const siteUrl = "https://chrome-extension-images-generator.vercel.app";
+import { siteConfig } from "@/lib/site-config";
 
 export const dynamic = "force-static";
 
@@ -10,6 +9,7 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: "*",
       allow: "/"
     },
-    sitemap: `${siteUrl}/sitemap.xml`
+    sitemap: `${siteConfig.url}/sitemap.xml`,
+    host: siteConfig.url
   };
 }
