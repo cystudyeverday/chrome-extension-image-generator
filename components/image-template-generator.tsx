@@ -346,7 +346,7 @@ export function ImageTemplateGenerator() {
     }
   }
 
-  async function handleDownloadAll() {
+  async function handleDownloadSelected() {
     if (!image) {
       setMessage("Upload an image first.");
       return;
@@ -362,6 +362,24 @@ export function ImageTemplateGenerator() {
       await downloadAllSizes(selectedTemplate, image, data, selectedSizes);
       persistHistory();
       setMessage(`${selectedSizes.length} PNG downloads started.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Batch download failed.");
+    } finally {
+      setIsDownloading(false);
+    }
+  }
+
+  async function handleDownloadAll() {
+    if (!image) {
+      setMessage("Upload an image first.");
+      return;
+    }
+
+    try {
+      setIsDownloading(true);
+      await downloadAllSizes(selectedTemplate, image, data, selectedTemplate.sizes);
+      persistHistory();
+      setMessage(`All ${selectedTemplate.sizes.length} PNG downloads started.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Batch download failed.");
     } finally {
@@ -518,8 +536,16 @@ export function ImageTemplateGenerator() {
               }}
             />
           </label>
+          <button
+            type="button"
+            className="button button--secondary"
+            disabled={isDownloading || selectedSizes.length === 0}
+            onClick={handleDownloadSelected}
+          >
+            {isDownloading ? "Generating..." : `Download Selected (${selectedSizes.length})`}
+          </button>
           <button type="button" className="button button--primary" disabled={isDownloading} onClick={handleDownloadAll}>
-            {isDownloading ? "Generating..." : `Download Selected Previews (${selectedSizes.length})`}
+            {isDownloading ? "Generating..." : "Download All"}
           </button>
         </div>
       </section>
